@@ -65,7 +65,7 @@ DEFAULT_SPAN = 2e9
 # resolution bandwidth in Hz. Available values are [0.1Hz-100kHz], 250kHz, 6MHz.
 # see _is_valid_rbw() for exceptions to available values.
 # definition: amplitude value for each frequency bin represents total energy
-# from rbw / 2 below and above the bin's center. 
+# from rbw / 2 below and above the bin's center.
 RBW = 'rbw' # gettable and settable
 DEFAULT_RBW = 250e3
 
@@ -108,7 +108,7 @@ class Sa124(PhysicalInstrument):
             return sa_open_device_by_serial(serial_number)['handle']
         except NameError:
             print('WARNING: Device was already open')
-            print('Closing and reinitializing it. Use configure_sweep() to'
+            print('Closing and reinitializing it. Use configure_sweep() to '
                   + 'change sweep parameters instead of __init__()')
             # TODO THIS ERROR HANDLING IS VERY HACKY, NEED TO IMPROVE
             sa_close_device(0) # we own one SA, which is always assigned 0
