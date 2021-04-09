@@ -103,8 +103,13 @@ class Sa124(PhysicalInstrument):
         return yaml_map
 
     def _connect(self, serial_number: int):
-        # error handling is done by sa_api
-        return sa_open_device_by_serial(serial_number)['handle']
+        # throw error if device with given serial number is already open
+        try:
+            return sa_open_device_by_serial(serial_number)['handle']
+        except NameError:
+            print('Device already open, did you mean to configure_sweep()?')
+            print('Exiting...')
+            exit()
 
     def _create_parameters(self, center, span, rbw, ref_power):
         # TODO find a way to remove hard coding - is that desirable?
