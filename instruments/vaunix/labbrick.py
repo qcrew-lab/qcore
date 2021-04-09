@@ -109,7 +109,7 @@ class LabBrick(PhysicalInstrument):
         self.create_parameter(name=POWER, value=power, unit='dBm')
 
         self._frequency = self._parameters[FREQUENCY]
-        self._frequency.value = self._element.lo_freq.value
+        self._frequency.value = self._element.lo_freq
         self._power = self._parameters[POWER]
 
     def _initialize(self):
@@ -142,7 +142,7 @@ class LabBrick(PhysicalInstrument):
         min_pow = get_min_power(self._device_handle) * POW_SCALAR
         self._power.minimum = min_pow
         max_pow = get_max_power(self._device_handle) * POW_SCALAR
-        self._frequency.maximum = max_pow
+        self._power.maximum = max_pow
 
     @property # frequency getter
     def frequency(self):
