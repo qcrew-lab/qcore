@@ -103,8 +103,16 @@ class Sa124(PhysicalInstrument):
         return yaml_map
 
     def _connect(self, serial_number: int):
-        # error handling is done by sa_api
-        return sa_open_device_by_serial(serial_number)['handle']
+        # throw error if device with given serial number is already open
+        try:
+            return sa_open_device_by_serial(serial_number)['handle']
+        except NameError:
+            print('WARNING: Device was already open')
+            print('Closing and reinitializing it. Use configure_sweep() to'
+                  + 'change sweep parameters instead of __init__()')
+            # TODO THIS ERROR HANDLING IS VERY HACKY, NEED TO IMPROVE
+            sa_close_device(0) # we own one SA, which is always assigned 0
+            return sa_open_device_by_serial(serial_number)['handle']
 
     def _create_parameters(self, center, span, rbw, ref_power):
         # TODO find a way to remove hard coding - is that desirable?
@@ -170,14 +178,15 @@ class Sa124(PhysicalInstrument):
 
         # device is ready to sweep
         sa_initiate(self._device_handle, SA_SWEEPING, SA_FALSE)
-        print('Sweep info: ')
-        print(self.sweep_info)
 
         # update internal parameters
         self._center.value = center
         self._span.value = span
         self._rbw.value = rbw
         self._ref_power.value = ref_power
+
+        print('Configured sweep! Sweep info: ')
+        print(self.sweep_info)
 
     @property # sweep info getter
     def sweep_info(self):
