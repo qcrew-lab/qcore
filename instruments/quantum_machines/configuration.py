@@ -5,7 +5,7 @@ import numpy as np
 # AUXILIARY FUNCTIONS:
 ######################
 
-##### Gauss wf format as given by QM. 
+##### Gauss wf format as given by QM.
 #def gauss(amplitude, mu, sigma, length):
 #    t = np.linspace(-length / 2, length / 2, length)
 #    gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
