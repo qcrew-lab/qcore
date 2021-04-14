@@ -32,10 +32,10 @@ def IQ_imbalance(g, phi):
 long_readout_len = 1000
 readout_len = 400
 
-qubit_IF = int(-10.22e6)
+qubit_IF = int(-50e6)
 rr_IF = int(-47.25e6) #int(-50e6)
 
-qubit_LO = int(4.360e9)
+qubit_LO = int(4.165e9)
 rr_LO = int(8.7571e9)
 
 rr_mixer_gain = 0.011903211805555558
@@ -124,7 +124,7 @@ config = {
 
         "saturation_pulse": {
             'operation': 'control',
-            'length': 15000,  # several T1s
+            'length': 1000,  # several T1s
             'waveforms': {
                 'I': 'saturation_wf',
                 'Q': 'zero_wf'
@@ -133,7 +133,7 @@ config = {
 
         "gaussian_pulse": {
             'operation': 'control',
-            'length': int(1000*4),
+            'length': int(150*4),
             'waveforms': {
                 'I': 'gauss_wf',
                 'Q': 'zero_wf'
@@ -218,7 +218,7 @@ config = {
 
         'gauss_wf': {
             'type': 'arbitrary',
-            'samples': gauss(0.25, 1000, 4) #gauss(0.25, 0.0, 6.0, 60)
+            'samples': gauss(0.25, 150, 4) #gauss(0.25, 0.0, 6.0, 60)
         },
 
         'pi_wf': {
