@@ -1,13 +1,13 @@
 """
 Instrument.
 """
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 from utils.yamlizer import Yamlable
 
-class Instrument(ABC, Yamlable):
+class Instrument(Yamlable):
     """
-    Abstract base class for Instrument.
+    Base class for Instrument.
 
     An Instrument has a name and is a container of parameters. It has methods to
     add, remove, create a given parameter. Can be loaded from or saved to yaml
@@ -24,26 +24,9 @@ class Instrument(ABC, Yamlable):
     def parameters(self):
         pass
 
-"""
-    def create_parameter(self, name: str, value = None, unit: str = None,
-                         maximum = None, minimum = None):
-        new_parameter = Parameter(name, value, unit, maximum, minimum)
-        self.add_parameter(new_parameter)
-
-    def add_parameter(self, parameter: Parameter):
-        # raise error if param alr exists, do error logging instead of print
-        if parameter.name in self._parameters:
-            raise ValueError('Parameter of this name alr exists in instrument.')
-        else:
-            self._parameters[parameter.name] = parameter
-
-    def remove_parameter(self, parameter: Parameter):
-        # do error logging instead of print statement
-        try:
-            del self._parameters[parameter.name]
-        except KeyError:
-            print('Parameter does not exist in the Instrument.')
-"""
+    @property # name getter
+    def name(self):
+        return self._name
 
 class PhysicalInstrument(Instrument):
     """
@@ -61,7 +44,7 @@ class PhysicalInstrument(Instrument):
     @abstractmethod
     def _connect(self):
         """
-        Establish a connection to the hardware. 
+        Establish a connection to the hardware.
         """
         pass
 
@@ -85,5 +68,10 @@ class MetaInstrument(Instrument):
     physical or simulated system. A meta instrument may be controlled by many
     physical instruments. A meta instrument may have its own internal state
     and generate results much like a physical instrument.
+
+    Initialised with a config dict that specifies its parameters and initial
+    values.
     """
-    # find a way to make this class less useless
+    def __init__(self, name: str, parameters: dict):
+        self._parameters = parameters
+        super().__init__(name=name)
