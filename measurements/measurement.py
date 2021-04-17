@@ -51,7 +51,7 @@ class Measurement(Yamlable):
         pass
 
     @abstractmethod
-    def run(self):
+    def _script(self):
         """
         Performs the measurement and saves the results in a database.
         """
