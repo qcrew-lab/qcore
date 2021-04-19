@@ -4,7 +4,7 @@ Yamlable inherits YAMLOBject and defines methods to save and load subclasses
 from yaml files. Subclasses can define a dictionary of parameters that gets
 written to and read from yaml file.
 """
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 import yaml
 
 YAML_TAG_PREFIX = u'!'
@@ -21,7 +21,7 @@ def sequence_representer(dumper, value):
     yaml_seq_tag = u'tag:yaml.org,2002:seq'
     return dumper.represent_sequence(yaml_seq_tag, value, flow_style=True)
 
-class YamlableMetaclass(type):
+class YamlableMetaclass(ABCMeta):
     """
     Defines yaml tag, loader, dumper for all inheriting classes. Registration
     of class to yaml is done by inheriting from this metaclass.
@@ -49,7 +49,6 @@ class Yamlable(metaclass = YamlableMetaclass):
         Create a yaml map that defines how the instance will be stored and
         retrieved from a yaml file.
         """
-        pass
 
     @classmethod
     def load(cls, path):
@@ -64,7 +63,9 @@ class Yamlable(metaclass = YamlableMetaclass):
         """
         Constructor
         """
-        # TODO error handling if unable to create instance from saved map
+        # TODO better error handling, right now it is patchwork...
+        # add flexibility so that nodes that are scalar, sequence, maps, are
+        # handled properly without error.
         yaml_map = loader.construct_mapping(node)
         return cls(**yaml_map)
 
