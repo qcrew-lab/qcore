@@ -5,8 +5,7 @@
 
 from ctypes import *
 import numpy
-import sys # changes made by Atharv are signed as 'aj'
-from pathlib import Path # aj
+from pathlib import Path # changes made by Atharv are signed as 'aj'
 
 # dll must be in the same directory as this api # aj
 DLL_NAME = 'sa_api.dll' # aj
@@ -193,7 +192,7 @@ def error_check(func):
             print (f"{'Error' if status < 0 else 'Warning'} {status}: {sa_get_error_string(status)} in {func.__name__}()")
         if status < 0:
             #exit() # aj
-            sys.exit(1) # aj
+            raise RuntimeError('See error string for details...') #aj
         return return_vars
     return print_status_if_error
 

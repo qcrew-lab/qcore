@@ -20,6 +20,10 @@ from instruments.signal_hound.sa_api import (
     sa_open_device_by_serial, sa_query_sweep_info, sa_set_timebase)
 
 # ----------------------------------- Globals ----------------------------------
+# dict containing serial numbers and device handles of connected SAs
+# key is serial number (int) and value is device handle (int)
+SA_CONNECTIONS = dict()
+
 # detector parameter decides if overlapping results from signal processing
 # should be averaged (`SA_AVERAGE`) or if minimum and maximum values should be
 # maintained (`SA_MIN_MAX`)
@@ -105,7 +109,17 @@ class Sa124(PhysicalInstrument):
 
     def _connect(self, uid: int):
         # TODO throw error if device with given serial number is already open
-        return sa_open_device_by_serial(uid)['handle']
+        try:
+            device_handle = sa_open_device_by_serial(uid)['handle']
+            SA_CONNECTIONS[uid] = device_handle
+            return device_handle
+        except RuntimeError:
+            print('You are trying to open an already open SA...')
+            print('Closing and re-opening this SA')
+            print('PLEASE DO NOT DO THIS AGAIN WTF')
+            device_handle = SA_CONNECTIONS[uid]
+            sa_close_device(device_handle)
+            return sa_open_device_by_serial(uid)['handle']
 
     def _initialize(self):
         # this group of settings is set to global default values
@@ -186,6 +200,7 @@ class Sa124(PhysicalInstrument):
 
     def disconnect(self):
         sa_close_device(self._device_handle)
+        del SA_CONNECTIONS[self._uid]
 
     @property # parameters getter
     def parameters(self):
