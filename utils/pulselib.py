@@ -14,24 +14,32 @@ from utils.yamlizer import Yamlable
 # --------------------- Waveform generator functions ---------------------------
 # constant value function
 def constant_fn(amp):
+    """
+    Constant valued fn. TODO write proper docu.
+    """
     return amp
 
 # gaussian function
 def gauss_fn(max_amp: float, sigma: float, multiple_of_sigma: int):
+    """
+    Gaussian fn. TODO write proper docu.
+    """
     length = int(multiple_of_sigma*sigma)
     mu = int(np.floor(length / 2))
     t = np.linspace(0, length - 1, length)
     gaussian = max_amp * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
     return [float(x) for x in gaussian]
 
+# map of strings to functions
+# even though functions can be passed into methods in Python, it might be more
+# convenient to work with function name strings
 func_map = {
     'constant_fn': constant_fn,
     'gauss_fn': gauss_fn,
-    constant_fn: 'constant_fn',
-    gauss_fn: 'gauss_fn'
 }
 
 # --------------------------- Waveform classes ---------------------------------
+# pylint: disable=abstract-method
 # TODO validate waveform params (max, min amp etc) against QM accepted range
 class Waveform(Yamlable):
     """
@@ -39,34 +47,20 @@ class Waveform(Yamlable):
     Accepts a func that basically tells it how to generate the waveform
     sample/samples. Func is a lambda.
     """
-    def __init__(self, func=None, func_name: str=None, func_params: dict=None):
+    def __init__(self, name: str, func: str, func_params: dict):
+        self.name = name
+
         # TODO better error handling
-        if func and func_params is None:
-            print('YOU MUST PROVIDE EITHER A FUNCTION OR THE NAME OF A VALID' +
-                  'FUNCTION TO INITIALIZE A WAVEFORM')
-            return
-        elif func is None:
-            # TODO handle key error
-            self.func = func_map[func_name]
-        else:
-            self.func = func
+        self.func_name = func
+        try:
+            self.func = func_map[func]
+        except KeyError:
+            print('func_name does not correspond to a func defined in pulselib')
 
-        self._func_params = func_params
+        self.func_params = func_params
 
-    def _create_yaml_map(self):
-        yaml_map = {
-            'func': func_map[self.func],
-            'func_params': self.func_params
-        }
-        return yaml_map
-
-    @property # func params getter
-    def func_params(self):
-        return self._func_params
-
-    @func_params.setter
-    def func_params(self, new_func_params: dict):
-        self._func_params = new_func_params
+    def get_samples(self):
+        return self.func(**self.func_params)
 
 class ConstantWaveform(Waveform):
     """
@@ -74,36 +68,42 @@ class ConstantWaveform(Waveform):
     constant value no matter what args are supplied in get_samples.
 
     """
-    def __init__(self, func_params=None):
-        super().__init__(func=constant_fn, func_params=func_params)
+    def __init__(self, name: str, amp: float):
+        self.amp = amp
+        super().__init__(name=name, func='constant_fn',
+                         func_params={'amp': amp})
 
-DEFAULT_MAX_ALLOWED_ERROR = 1e-3 # set by QM
-DEFAULT_SAMPLING_RATE = 1 # in gigasamples per second, set by QM
+    def _create_yaml_map(self):
+        yaml_map = {
+            'amp': self.amp
+        }
+        return yaml_map
+
 class ArbitraryWaveform(Waveform):
     """
-    The func is arbitrary and passed in with the init method.
-    Extra params - sampling rate and max error allowed (acc to QM)
-    For arbitrary waveforms, the func will return the values corresponding to
-    the args given.
+    Supplied with a string that corresponds to a valid fn name in the pulselib,
+    and **kwargs which are all arguments that the function will accept.
+
+    In the future, we will add support for user to change max_allowed_error and
+    sampling_rate, for now these will be default values set by QM.
     """
-    def __init__(self, func, func_params=None,
-                 max_allowed_error=None, sampling_rate=None):
-        # default set by QM is 1e-3 for max_error_allowed
-        # and 1 gigasamples per second for sampling rate
-        self.max_allowed_error = (DEFAULT_MAX_ALLOWED_ERROR
-                                  if max_allowed_error is None
-                                  else max_allowed_error)
-        self.sampling_rate = (DEFAULT_SAMPLING_RATE if sampling_rate is None
-                              else sampling_rate)
-        super().__init__(func=func, func_params=func_params)
+    def __init__(self, name: str, func: str, **parameters):
+        self.parameters = parameters
+        super().__init__(name=name, func=func, func_params=parameters)
+
+    def _create_yaml_map(self):
+        yaml_map = dict()
+        yaml_map['name'] = self.name
+        yaml_map['func'] = self.func_name
+        yaml_map.update(self.parameters)
+        return yaml_map
 
 # ------------------------ Archetypical waveforms ------------------------------
-ZERO_WF = ConstantWaveform(func_params={'amp': 0.0})
-DEFAULT_CONSTANT_WF = ConstantWaveform(func_params={'amp': 0.25})
-DEFAULT_GAUSS_WF = ArbitraryWaveform(func=gauss_fn,
-                                      func_params={'max_amp': 0.25,
-                                                   'sigma': 1000,
-                                                   'multiple_of_sigma': 4})
+ZERO_WF = ConstantWaveform(name='zero_wf', amp=0.0)
+DEFAULT_CONSTANT_WF = ConstantWaveform(name='constant_wf', amp=0.25)
+DEFAULT_GAUSS_WF = ArbitraryWaveform(name='gauss_wf', func='gauss_fn',
+                                     max_amp=0.25, sigma=1000,
+                                     multiple_of_sigma=4)
 
 # ----------------------------- Pulse classes ----------------------------------
 # all pulses are control pulses, some are also measurement pulses.
@@ -134,6 +134,9 @@ class MeasurementPulse(Pulse):
     """
     @property # integration weights getter
     def integration_weights(self):
+        """
+        Default integration weights for a measurement pulse.
+        """
         # TODO remove hard-coded global 4, and ones and zeros in sine/cosine
         num_clock_cycles = int(self.length / 4)
         integration_weights = {
@@ -142,6 +145,14 @@ class MeasurementPulse(Pulse):
                 'sine': np.zeros(num_clock_cycles)
                 },
             'iw2': {
+                'cosine': np.zeros(num_clock_cycles),
+                'sine': np.ones(num_clock_cycles)
+                },
+            'optw1': {
+                'cosine': np.ones(num_clock_cycles),
+                'sine': np.zeros(num_clock_cycles)
+                },
+            'optw2': {
                 'cosine': np.zeros(num_clock_cycles),
                 'sine': np.ones(num_clock_cycles)
                 }
