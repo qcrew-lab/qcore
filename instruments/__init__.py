@@ -1,7 +1,9 @@
 """
-__init__.py
+This __init__.py makes the importing of all Instrument classes more accessible.
 """
+from .instrument import Instrument, MetaInstrument, PhysicalInstrument
 from .vaunix.labbrick import LabBrick
 from .signal_hound.sa124 import Sa124
-from .instrument import (Instrument, MetaInstrument, PhysicalInstrument)
-from .meta.quantum_element import QuantumElement, QuantumDevice
+from .meta.cqed_components import QuantumElement, QuantumDevice
+from .meta.stage import Stage
+from .quantum_machines import qm_config_builder
