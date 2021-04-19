@@ -164,4 +164,9 @@ class ResonatorSpectroscopy(Measurement):
         self._rr_ascale = self._parameters['Resonator pulse amp. scaling']
         self._qubit_ascale = self._parameters['Qubit pulse amp. scaling']
         self._qubit_pulse = self._parameters['Qubit pulse name']
+        
+    def _create_yaml_map(self):
+        # TODO
+        return
+
 
