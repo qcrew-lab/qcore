@@ -22,7 +22,7 @@ from instruments.signal_hound.sa_api import (
 # ----------------------------------- Globals ----------------------------------
 # dict containing serial numbers and device handles of connected SAs
 # key is serial number (int) and value is device handle (int)
-SA_CONNECTIONS = dict()
+ACTIVE_SA_CONNECTIONS = dict()
 
 # detector parameter decides if overlapping results from signal processing
 # should be averaged (`SA_AVERAGE`) or if minimum and maximum values should be
@@ -89,7 +89,7 @@ class Sa124(PhysicalInstrument):
                  center: float=DEFAULT_CENTER, span: float=DEFAULT_SPAN,
                  rbw: float=DEFAULT_RBW, ref_power: float=DEFAULT_REF_POWER):
         # TODO use try catch block in case device not authenticated
-        print('Trying to initialize ' + name)
+        print('Trying to initialize ' + name + ', will take about 5s...')
         self._device_handle = self._connect(serial_number)
         super().__init__(name=name, uid=serial_number)
         print('Connnected to SA124B ' + str(self._uid))
@@ -111,15 +111,16 @@ class Sa124(PhysicalInstrument):
         # TODO throw error if device with given serial number is already open
         try:
             device_handle = sa_open_device_by_serial(uid)['handle']
-            SA_CONNECTIONS[uid] = device_handle
+            ACTIVE_SA_CONNECTIONS[uid] = device_handle
             return device_handle
-        except RuntimeError:
-            print('You are trying to open an already open SA...')
-            print('Closing and re-opening this SA')
-            print('PLEASE DO NOT DO THIS AGAIN WTF')
-            device_handle = SA_CONNECTIONS[uid]
-            sa_close_device(device_handle)
-            return sa_open_device_by_serial(uid)['handle']
+        except RuntimeError as runtime_error:
+            if uid in ACTIVE_SA_CONNECTIONS:
+                print('You are trying to open an already open SA')
+                print('PLEASE DO NOT DO THIS AGAIN WTF')
+                device_handle = ACTIVE_SA_CONNECTIONS[uid]
+                return device_handle
+            else:
+                raise RuntimeError('SA with serial no. DNE') from runtime_error
 
     def _initialize(self):
         # this group of settings is set to global default values
@@ -152,32 +153,46 @@ class Sa124(PhysicalInstrument):
             is_valid_rbw = False
 
         if not is_valid_rbw:
-            print('Bad RBW value given, default to{:.2E}.'
-                  .format(DEFAULT_RBW))
+            print('Bad RBW value given, rbw remains unchanged')
 
         return is_valid_rbw
 
-    def configure_sweep(self, center: float=DEFAULT_CENTER,
-                        span: float=DEFAULT_SPAN, rbw: float=DEFAULT_RBW,
-                        ref_power: float=DEFAULT_REF_POWER):
+    def configure_sweep(self, center: float=None, span: float=None,
+                        rbw: float=None, ref_power: float=None):
         # device must be in idle mode before it is configured
         # the third argument is an inconsequential flag that can be ignored
         sa_initiate(self._device_handle, SA_IDLE, SA_FALSE)
 
-        sa_config_center_span(self._device_handle, center, span)
-        new_rbw = rbw if self._is_valid_rbw(rbw) else DEFAULT_RBW
-        sa_config_sweep_coupling(self._device_handle, new_rbw, new_rbw,
-                                 DOES_IMAGE_REJECT)
-        sa_config_level(self._device_handle, ref_power)
+        new_center, new_span = self._center, self._span
+        if center is not None and span is not None:
+            sa_config_center_span(self._device_handle, center, span)
+            new_center, new_span = center, span
+        elif center is None and span is not None:
+            sa_config_center_span(self._device_handle, self._center, span)
+            new_center, new_span = self._center, span
+        elif center is not None and span is None:
+            sa_config_center_span(self._device_handle, center, self._span)
+            new_center, new_span = center, self._span          
+
+        new_rbw = self._rbw
+        if rbw is not None:
+            new_rbw = rbw if self._is_valid_rbw(rbw) else self._rbw
+            sa_config_sweep_coupling(self._device_handle, new_rbw, new_rbw,
+                                     DOES_IMAGE_REJECT)
+
+        new_ref_power = self._ref_power
+        if ref_power is not None:
+            new_ref_power = ref_power
+            sa_config_level(self._device_handle, new_ref_power)
 
         # device is ready to sweep
         sa_initiate(self._device_handle, SA_SWEEPING, SA_FALSE)
 
-        # update internal parameters
-        self._center = center
-        self._span = span
+        # update internal parameters if changed
+        self._center = new_center
+        self._span = new_span
         self._rbw = new_rbw
-        self._ref_power = ref_power
+        self._ref_power = new_ref_power
 
         print('Configured sweep! Sweep info: ')
         print(self.sweep_info)
@@ -200,7 +215,7 @@ class Sa124(PhysicalInstrument):
 
     def disconnect(self):
         sa_close_device(self._device_handle)
-        del SA_CONNECTIONS[self._uid]
+        del ACTIVE_SA_CONNECTIONS[self._uid]
 
     @property # parameters getter
     def parameters(self):
