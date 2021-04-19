@@ -45,9 +45,6 @@ FREQUENCY = 'frequency' # gettable and settable
 POWER = 'power' # gettable and settable
 
 # ---------------------------------- Class -------------------------------------
-# pylint: disable=too-many-instance-attributes
-# we recognize this as a code smell and in a future implementation will address
-# this by making frequency and power a Parameter type with max & min attributes.
 class LabBrick(PhysicalInstrument):
     """
     TODO write class docstring.
@@ -57,9 +54,10 @@ class LabBrick(PhysicalInstrument):
         print('Trying to initialize ' + name)
         self._device_handle = self._connect(serial_number)
         super().__init__(name=name, uid=serial_number)
+        self._is_active = True # will be updated to False in disconnect()
 
         if frequency is None or power is None:
-            raise RuntimeError('initial freq and power cannot be None type...')
+            raise RuntimeError('Initial freq and power cannot be None type...')
 
         self._frequency = frequency
         self._min_freq = None # will be updated in _initialize()
@@ -129,10 +127,13 @@ class LabBrick(PhysicalInstrument):
         Returns:
             [float]: current freq
         """
+        if not self._is_active:
+            raise RuntimeError('This LabBrick has been disconnected!')
+
         # TODO add logging and error handling
         current_freq = get_frequency(self._device_handle) * FREQ_SCALAR * 1.0
         self._frequency = current_freq # just to make sure its up to date
-        print('Current freq is {:.2E}'.format(current_freq))
+        print('Current freq is {:.7E}'.format(current_freq))
         return current_freq
 
     @frequency.setter
@@ -142,12 +143,15 @@ class LabBrick(PhysicalInstrument):
         Args:
             new_frequency (float): new freq to set
         """
+        if not self._is_active:
+            raise RuntimeError('This LabBrick has been disconnected!')
+
         if self._min_freq <= new_frequency <= self._max_freq:
             freq_steps = int(new_frequency / FREQ_SCALAR)
             set_frequency(self._device_handle, freq_steps)
             self._frequency = new_frequency
             print('Successfully set frequency to '
-                  + '{:.2E}'.format(new_frequency))
+                  + '{:.7E}'.format(new_frequency))
         else:
             print('Failed to set frequency - out of bounds')
 
@@ -158,6 +162,9 @@ class LabBrick(PhysicalInstrument):
         Returns:
             [int]: current power
         """
+        if not self._is_active:
+            raise RuntimeError('This LabBrick has been disconnected!')
+
         power_level = get_power(self._device_handle)
         current_power = int(self._max_pow - (power_level * POW_SCALAR))
         self._power = current_power # just to make sure its up to date
@@ -171,6 +178,9 @@ class LabBrick(PhysicalInstrument):
         Args:
             new_power (int): new power to set
         """
+        if not self._is_active:
+            raise RuntimeError('This LabBrick has been disconnected!')
+
         if self._min_pow <= new_power <= self._max_pow:
             power_level = int(new_power / POW_SCALAR)
             set_power_level(self._device_handle, power_level)
@@ -187,12 +197,15 @@ class LabBrick(PhysicalInstrument):
         Returns:
             [dict]: current freq and power on device
         """
+        if not self._is_active:
+            raise RuntimeError('This LabBrick has been disconnected!')
         return {
-            FREQUENCY: self.frequency,
+            FREQUENCY: '{:.7E}'.format(self.frequency),
             POWER: self.power
             }
 
     def disconnect(self):
         set_rf_on(self._device_handle, RF_OFF)
         close_device(self._device_handle)
-        print('device disconnected')
+        self._is_active = False
+        print(self._name + ' disconnected!')
