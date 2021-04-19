@@ -49,85 +49,63 @@ VID_PROCESSING_UNITS = SA_LOG_UNITS
 # short duration signals at a known frequency.
 DOES_IMAGE_REJECT = SA_TRUE
 
-# ------------------------------- Parameters -----------------------------------
+# ----------------------- Constructor argument names ---------------------------
 NAME = 'name' # gettable
 SERIAL_NUMBER = 'serial_number' # gettable
 
 # frequency sweep center in Hz
 CENTER = 'center' # gettable and settable
+DEFAULT_CENTER = 8e9
 
 # frequency sweep span in Hz
 SPAN = 'span' # gettable and settable
+DEFAULT_SPAN = 2e9
 
 # resolution bandwidth in Hz. Available values are [0.1Hz-100kHz], 250kHz, 6MHz.
 # see _is_valid_rbw() for exceptions to available values.
 # definition: amplitude value for each frequency bin represents total energy
-# from rbw / 2 below and above the bin's center. 
+# from rbw / 2 below and above the bin's center.
 RBW = 'rbw' # gettable and settable
+DEFAULT_RBW = 250e3
 
 # reference power level of device in dBm.
 # set it at or slightly about your expected input power for best sensitivity.
 REF_POWER = 'ref_power' # gettable and settable
-
-PARAMETERS = 'parameters' # gettable
-DEFAULT_PARAMETERS = {
-    CENTER: 8e9,
-    SPAN: 2e9,
-    RBW: 250e3,
-    REF_POWER: 0
-}
+DEFAULT_REF_POWER = 0
 
 # ---------------------------------- Class -------------------------------------
 class Sa124(PhysicalInstrument):
     """
     SA124. TODO - WRITE CLASS DOCU
     """
-    def __init__(self, name: str, serial_number: int, parameters: dict=None):
+    # pylint: disable=too-many-arguments
+    # this is a physical instrument and requires all these arguments for proper
+    # initialisation in frequency sweep mode.
+    def __init__(self, name: str, serial_number: int,
+                 center: float=DEFAULT_CENTER, span: float=DEFAULT_SPAN,
+                 rbw: float=DEFAULT_RBW, ref_power: float=DEFAULT_REF_POWER):
         # TODO use try catch block in case device not authenticated
         print('Trying to initialize ' + name)
         self._device_handle = self._connect(serial_number)
-        super().__init__(name=name, identifier=serial_number)
-        self._create_parameters(parameters)
+        super().__init__(name=name, uid=serial_number)
+        print('Connnected to SA124B ' + str(self._uid))
+
+        self._center = center
+        self._span = span
+        self._rbw = rbw
+        self._ref_power = ref_power
         self._initialize()
 
     def _create_yaml_map(self):
-        # TODO can we ensure the map adheres to constructor without hard coding?
         yaml_map = {NAME: self._name,
-                    SERIAL_NUMBER: self._identifier,
-                    PARAMETERS: self._parameters
+                    SERIAL_NUMBER: self._uid
                     }
+        yaml_map.update(self.parameters)
         return yaml_map
 
-    def _connect(self, serial_number: int):
-        # throw error if device with given serial number is already open
-        try:
-            return sa_open_device_by_serial(serial_number)['handle']
-        except NameError:
-            print('WARNING: Device was already open')
-            print('Closing and reinitializing it. Use configure_sweep() to'
-                  + 'change sweep parameters instead of __init__()')
-            # TODO THIS ERROR HANDLING IS VERY HACKY, NEED TO IMPROVE
-            sa_close_device(0) # we own one SA, which is always assigned 0
-            return sa_open_device_by_serial(serial_number)['handle']
-
-    def _create_parameters(self, parameters):
-        # TODO find a way to remove hard coding - is that desirable?
-        print('Connnected to SA124B ' + str(self._identifier))
-        print('creating parameters...')
-
-        if parameters is None:
-            self._parameters = DEFAULT_PARAMETERS
-            print('no parameters supplied, setting default values...')
-        else:
-            self._parameters = parameters
-            print('parameters found!')
-
-        self._center = self._parameters[CENTER]
-        self._span = self._parameters[SPAN]
-        self._rbw = self._parameters[RBW]
-        self._ref_power = self._parameters[REF_POWER]
-        print('created parameters: ')
-        print(self._parameters)
+    def _connect(self, uid: int):
+        # TODO throw error if device with given serial number is already open
+        return sa_open_device_by_serial(uid)['handle']
 
     def _initialize(self):
         # this group of settings is set to global default values
@@ -161,20 +139,19 @@ class Sa124(PhysicalInstrument):
 
         if not is_valid_rbw:
             print('Bad RBW value given, default to{:.2E}.'
-                  .format(DEFAULT_PARAMETERS[RBW]))
+                  .format(DEFAULT_RBW))
 
         return is_valid_rbw
 
-    def configure_sweep(self, center: float=DEFAULT_PARAMETERS[CENTER],
-                        span: float=DEFAULT_PARAMETERS[SPAN],
-                        rbw: float=DEFAULT_PARAMETERS[RBW],
-                        ref_power: float=DEFAULT_PARAMETERS[REF_POWER]):
+    def configure_sweep(self, center: float=DEFAULT_CENTER,
+                        span: float=DEFAULT_SPAN, rbw: float=DEFAULT_RBW,
+                        ref_power: float=DEFAULT_REF_POWER):
         # device must be in idle mode before it is configured
         # the third argument is an inconsequential flag that can be ignored
         sa_initiate(self._device_handle, SA_IDLE, SA_FALSE)
 
         sa_config_center_span(self._device_handle, center, span)
-        new_rbw = rbw if self._is_valid_rbw(rbw) else DEFAULT_PARAMETERS[RBW]
+        new_rbw = rbw if self._is_valid_rbw(rbw) else DEFAULT_RBW
         sa_config_sweep_coupling(self._device_handle, new_rbw, new_rbw,
                                  DOES_IMAGE_REJECT)
         sa_config_level(self._device_handle, ref_power)
@@ -193,8 +170,9 @@ class Sa124(PhysicalInstrument):
 
     @property # sweep info getter
     def sweep_info(self):
-        sweep_parameters = self._parameters
+        sweep_parameters = self.parameters
         more_sweep_parameters = sa_query_sweep_info(self._device_handle)
+        more_sweep_parameters.pop('status')
         return {**sweep_parameters, **more_sweep_parameters}
 
     def sweep(self):
@@ -211,8 +189,9 @@ class Sa124(PhysicalInstrument):
 
     @property # parameters getter
     def parameters(self):
-        print('.' + CENTER + ' (GET and SET)')
-        print('.' + SPAN + ' (GET and SET)')
-        print('.' + RBW + ' (GET and SET)')
-        print('.' + REF_POWER + ' (GET and SET)')
-        return self._parameters
+        return {
+            CENTER: self._center,
+            SPAN: self._span,
+            RBW: self._rbw,
+            REF_POWER: self._ref_power
+        }
