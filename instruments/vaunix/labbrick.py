@@ -193,6 +193,6 @@ class LabBrick(PhysicalInstrument):
             }
 
     def disconnect(self):
-        print('disconnecting device...')
         set_rf_on(self._device_handle, RF_OFF)
         close_device(self._device_handle)
+        print('device disconnected')
