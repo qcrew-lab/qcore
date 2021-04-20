@@ -9,9 +9,9 @@ from pathlib import Path # changes made by Atharv are signed as 'aj'
 
 # dll must be in the same directory as this api # aj
 DLL_NAME = 'sa_api.dll' # aj
-PATH_T0_DLL = Path(__file__).resolve().parent / DLL_NAME # aj
+PATH_TO_DLL = Path(__file__).resolve().parent / DLL_NAME # aj
 #salib = CDLL("sadevice/sa_api.dll") # aj
-salib = CDLL(str(PATH_T0_DLL)) # aj
+salib = CDLL(str(PATH_TO_DLL)) # aj
 
 # ---------------------------------- Defines -----------------------------------
 

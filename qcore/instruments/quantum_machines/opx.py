@@ -9,7 +9,6 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.QuantumMachine import QuantumMachine
 
 from instruments.instrument import MetaInstrument, PhysicalInstrument
-from instruments.quantum_machines.configuration import configuration
 from parameter import Parameter
 
 # --------------------------------- Globals ------------------------------------
@@ -22,8 +21,6 @@ CONFIG = 'config'
 
 # parameter names
 READOUT_PULSE_LEN = 'readout_pulse_len'
-
-DEFAULT_CONFIG = configuration
 
 # ---------------------------------- Class -------------------------------------
 class Opx(PhysicalInstrument):

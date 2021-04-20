@@ -1,0 +1,2 @@
+To import Sa124, you need to first install its USB driver, if not, you will get an OSError.
+Please refer to the 'Requirements' and 'First time opening a new device' sections of the SA124 manual (https://signalhound.com/download/usb-sa124b-user-manual/).
