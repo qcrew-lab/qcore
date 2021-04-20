@@ -128,10 +128,3 @@ class MetaInstrument(Instrument):
                 param_value = parameters[param_name]
                 setattr(self, param_name, param_value)
                 self._parameters[param_name] = param_value
-
-    def _create_yaml_map(self):
-        yaml_map = dict()
-        yaml_map['name'] = self._name
-        # call parameters getter for latest values
-        yaml_map.update(self.parameters)
-        return yaml_map

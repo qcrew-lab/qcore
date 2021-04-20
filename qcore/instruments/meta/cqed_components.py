@@ -109,13 +109,21 @@ class QuantumElement(MetaInstrument):
             else:
                 print('No such operation defined for this element')
 
+    def _create_yaml_map(self):
+        yaml_map = dict()
+        yaml_map['name'] = self._name
+        # call parameters getter for latest values
+        yaml_map.update(self.parameters)
+        return yaml_map
+
+
 class QuantumDevice(MetaInstrument):
     """
     Encapsulates a quantum device, which contains multiple quantum elements
     performing specific functions.
     """
     def __init__(self, name: str, **elements):
-        self._elements = elements
+        self._elements = dict()
         # check that kwargs are indeed QuantumElement objects
         for element in elements.values():
             if not isinstance(element, QuantumElement):
@@ -133,9 +141,12 @@ class QuantumDevice(MetaInstrument):
     @property # elements getter
     def elements(self) -> set:
         """
-        Get the set of elements part of this quantum device.
+        Get the dict of elements part of this quantum device.
         """
-        elements = set()
-        for element in self._elements.values():
-            elements.add(element)
-        return elements
+        return self._elements
+
+    def _create_yaml_map(self):
+        yaml_map = dict()
+        yaml_map['name'] = self._name
+        yaml_map.update(self._elements)
+        return yaml_map

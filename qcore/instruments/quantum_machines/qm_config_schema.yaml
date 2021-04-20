@@ -1,4 +1,5 @@
 # QM config schema - https://qm-docs.s3.amazonaws.com/v0.8/config/index.html
+# fields that qcrew currently does not use have been commented out
 version: 1
 controllers:
   con1:
@@ -8,21 +9,21 @@ controllers:
     type: opx1
 elements:
   element_name:
-    frequency: ~
+    #frequency: ~
     intermediate_frequency: ~
     singleInput:
       port: ~
     smearing: ~
-    outputPulseParameters: ~
+    #outputPulseParameters: ~
     time_of_flight: ~
-    digitalInputs:
-      digital_input_name:
-        delay: ~
-        port: ~
-        output: ~
-        buffer: ~
-    measurement_qe: ~
-    thread: ~
+    #digitalInputs:
+      #digital_input_name:
+        #delay: ~
+        #port: ~
+        #output: ~
+        #buffer: ~
+    #measurement_qe: ~
+    #thread: ~
     mixInputs:
       I: ~
       Q: ~
@@ -30,8 +31,8 @@ elements:
       mixer: ~
     singleInputCollection:
       inputs: {}
-    hold_offset:
-      duration: ~
+    #hold_offset:
+      #duration: ~
     operations: {}
     outputs:
       out1: ~
@@ -49,8 +50,8 @@ waveforms:
   arbitrary_wf:
     samples: ~
     type: 'arbitrary'
-    max_allowed_error: ~
-    sampling_rate: ~
+    #max_allowed_error: ~
+    #sampling_rate: ~
   constant_wf:
     sample: ~
     type: 'constant'

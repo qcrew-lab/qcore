@@ -70,9 +70,10 @@ class LabBrick(PhysicalInstrument):
 
     def _create_yaml_map(self):
         yaml_map = {NAME: self._name,
-                    SERIAL_NUMBER: self._uid
+                    SERIAL_NUMBER: self._uid,
+                    FREQUENCY: self._frequency,
+                    POWER: self._power
                     }
-        yaml_map.update(self.parameters)
         return yaml_map
 
     def _connect(self, uid: int):
@@ -200,8 +201,8 @@ class LabBrick(PhysicalInstrument):
         if not self._is_active:
             raise RuntimeError('This LabBrick has been disconnected!')
         return {
-            FREQUENCY: '{:.7E}'.format(self.frequency),
-            POWER: self.power
+            FREQUENCY: '{:.7E}'.format(self._frequency),
+            POWER: self._power
             }
 
     def disconnect(self):
