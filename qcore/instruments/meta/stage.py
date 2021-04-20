@@ -105,7 +105,7 @@ class Stage(MetaInstrument):
         if instrument in self._instruments.values():
             if isinstance(instrument, PhysicalInstrument):
                 instrument.disconnect()
-            del(self._instruments, instrument.name)
+            del self._instruments[instrument.name]
             delattr(self, instrument.name)
         else:
             print('This instrument is not even part of the stage wot u doin ?!')
@@ -121,3 +121,10 @@ class Stage(MetaInstrument):
         for instrument in self._instruments.values():
             parameters[instrument.name] = instrument.parameters
         return parameters
+
+    def _create_yaml_map(self):
+        yaml_map = dict()
+        yaml_map['name'] = self._name
+        # call parameters getter for latest values
+        yaml_map.update(self._instruments)
+        return yaml_map

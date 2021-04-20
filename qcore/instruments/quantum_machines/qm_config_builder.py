@@ -61,7 +61,7 @@ def build_qm_config(elements: set[QuantumElement]) -> dict:
     qm_config = dict() # the config to be built
     qm_config['version'] = QM_CONFIG_SCHEMA['version'] # is currently 1
     _build_elements_config(elements, qm_config)
-    _build_controllers_config(elements, qm_config)    
+    _build_controllers_config(elements, qm_config)
     _build_mixers_config(elements, qm_config)
     _build_pulses_and_waveforms_config(elements, qm_config)
     _build_digital_waveforms_config(qm_config)
@@ -83,6 +83,8 @@ def _build_element_config(element: QuantumElement, element_schema: dict):
 
     if hasattr(element, 'time_of_flight') or hasattr(element, 'smearing'):
         _build_readout_element_config(element, element_schema)
+    else:
+        del element_schema['time_of_flight'], element_schema['smearing']
 
 def _build_element_ports_config(element: QuantumElement, element_schema: dict):
     # TODO make this error handling more robust
@@ -92,13 +94,18 @@ def _build_element_ports_config(element: QuantumElement, element_schema: dict):
     if 'in' in element.ports: # single input
         element_schema['singleInput']['port'] = (CONTROLLER,
                                                  element.ports['in'])
+        del element_schema['mixInputs']
     elif 'I' in element.ports and 'Q' in element.ports: # mixed inputs
         element_schema['mixInputs']['I'] = (CONTROLLER, element.ports['I'])
         element_schema['mixInputs']['Q'] = (CONTROLLER, element.ports['Q'])
+        del (element_schema['singleInput'],
+             element_schema['singleInputCollection'])
 
     # output port, if available
     if 'out' in element.ports:
         element_schema['outputs']['out1'] = (CONTROLLER, element.ports['out'])
+    else:
+        del element_schema['outputs']
 
 def _build_element_freq_config(element: QuantumElement, element_schema: dict):
     # TODO error handling if element does not have lo_freq, int_freq attributes
@@ -198,8 +205,8 @@ def _build_pulse_waveform_config(pulse: Pulse, pulse_schema: dict):
 
 def _build_meas_pulse_config(pulse: Pulse, pulse_schema: dict, qm_config: dict):
     pulse_schema['digital_marker'] = DEFAULT_DIGITAL_MARKER
-    iw_names = pulse.integration_weights.keys()
-    pulse_schema['integration_weights'] = dict.fromkeys(iw_names, iw_names)
+    for iw_name in pulse.integration_weights.keys():
+        pulse_schema['integration_weights'][iw_name] = iw_name
     _build_integration_weights_config(pulse, qm_config)
 
 def _build_integration_weights_config(pulse: MeasurementPulse, qm_config: dict):
@@ -214,8 +221,12 @@ def _build_waveform_config(waveform: Waveform, waveforms_config: dict):
     elif isinstance(waveform, ArbitraryWaveform):
         arb_wf_schema = deepcopy(QM_CONFIG_SCHEMA['waveforms']['arbitrary_wf'])
         arb_wf_schema['type'] = 'arbitrary'
-        arb_wf_schema['max_allowed_error'] = DEFAULT_MAX_ALLOWED_ERROR
-        arb_wf_schema['sampling_rate'] = DEFAULT_SAMPLING_RATE
+
+        # we cannot set max_allowed_error and sampling_rate at the same time
+        # for now, we'll simply not set these and follow qm's default behaviour
+        #arb_wf_schema['max_allowed_error'] = DEFAULT_MAX_ALLOWED_ERROR
+        #arb_wf_schema['sampling_rate'] = DEFAULT_SAMPLING_RATE
+
         arb_wf_schema['samples'] = waveform.get_samples()
         waveforms_config[waveform.name] = arb_wf_schema
 

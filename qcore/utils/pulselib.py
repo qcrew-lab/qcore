@@ -75,6 +75,7 @@ class ConstantWaveform(Waveform):
 
     def _create_yaml_map(self):
         yaml_map = {
+            'name': self.name,
             'amp': self.amp
         }
         return yaml_map
@@ -169,5 +170,5 @@ DEFAULT_READOUT_PULSE = MeasurementPulse(name='readout_pulse',
                                  waveforms={'I': DEFAULT_CONSTANT_WF,
                                             'Q': ZERO_WF})
 DEFAULT_GAUSSIAN_PULSE = Pulse(name='gaussian_pulse',
-                               length=DEFAULT_PULSE_LENGTH,
+                               length=len(DEFAULT_GAUSS_WF.get_samples()),
                                waveforms={'I': DEFAULT_GAUSS_WF, 'Q': ZERO_WF})
