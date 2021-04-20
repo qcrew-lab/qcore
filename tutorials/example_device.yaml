@@ -1,0 +1,43 @@
+!QuantumDevice
+name: device_A
+qubit:
+  lo_freq: 5.00e+09
+  int_freq: 5.00e+07
+  ports:
+    I: 1
+    Q: 2
+  operations:
+    'CW ': &id002 !Pulse
+      name: CW_pulse
+      length: 1000
+      waveforms:
+        I: &id003 !ConstantWaveform
+          amp: 0.25
+        Q: &id001 !ConstantWaveform
+          amp: 0.0
+    gaussian: !Pulse
+      name: gaussian_pulse
+      length: 1000
+      waveforms:
+        I: !ArbitraryWaveform
+          name: gauss_wf
+          func: gauss_fn
+          max_amp: 0.25
+          sigma: 1000
+          multiple_of_sigma: 4
+        Q: *id001
+rr:
+  lo_freq: 8.00e+09
+  int_freq: -5.00e+07
+  ports:
+    I: 3
+    Q: 4
+    out: 1
+  operations:
+    'CW ': *id002
+    readout: !MeasurementPulse
+      name: readout_pulse
+      length: 1000
+      waveforms:
+        I: *id003
+        Q: *id001
