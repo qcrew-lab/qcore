@@ -1,5 +1,4 @@
 """
-TODO write better docu
 Yamlable inherits YAMLOBject and defines methods to save and load subclasses
 from yaml files. Subclasses can define a dictionary of parameters that gets
 written to and read from yaml file.
@@ -41,22 +40,18 @@ class YamlableMetaclass(ABCMeta):
 
 class Yamlable(metaclass = YamlableMetaclass):
     """
-    All Yamlables are abstract, need to define create yaml map method.
+    All Yamlables are abstract, need to define create yaml map method. They
+    have a name.
     """
+    def __init__(self, name: str):
+        self._name = name
+
     @abstractmethod
     def _create_yaml_map(self):
         """
         Create a yaml map that defines how the instance will be stored and
         retrieved from a yaml file.
         """
-
-    @classmethod
-    def load(cls, path):
-        """
-        Return instance of cls from given path to yaml file.
-        """
-        with path.open(mode='r') as file:
-            return yaml.safe_load(file)
 
     @classmethod
     def from_yaml(cls, loader, node):
@@ -86,3 +81,10 @@ class Yamlable(metaclass = YamlableMetaclass):
     @property # yaml_map getter
     def yaml_map(self):
         return self._create_yaml_map()
+
+    @property # name getter
+    def name(self):
+        """
+        Get the name of this yamlable.
+        """
+        return self._name
