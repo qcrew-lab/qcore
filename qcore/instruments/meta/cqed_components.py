@@ -125,7 +125,10 @@ class QuantumDevice(MetaInstrument):
 
     @property # parameters getter
     def parameters(self):
-        return self._elements
+        parameters = dict()
+        for element in self._elements.values():
+            parameters[element.name] = element.parameters
+        return parameters
 
     @property # elements getter
     def elements(self) -> set:

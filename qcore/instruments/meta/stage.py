@@ -33,6 +33,14 @@ class Stage(MetaInstrument):
                 raise ValueError('Value of kwargs must be Instrument type')
         super().__init__(name=name, **instruments)
 
+    @classmethod
+    def load(cls, path):
+        """
+        Return instance of Stage from given path to yaml file.
+        """
+        with path.open(mode='r') as file:
+            return yaml.safe_load(file)
+
     def enter(self, path: Path=None, paths: set[Path]=None,
               instrument: Instrument=None, instruments: set[Instrument]=None):
         """
@@ -109,4 +117,7 @@ class Stage(MetaInstrument):
         instrument has the responsibility of presenting its own updated
         parameters.
         """
-        return self._instruments
+        parameters = dict()
+        for instrument in self._instruments.values():
+            parameters[instrument.name] = instrument.parameters
+        return parameters

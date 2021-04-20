@@ -27,7 +27,7 @@ class Instrument(Yamlable):
         Args:
             name (str): name of this instrument.
         """
-        self._name = name
+        super().__init__(name = name)
 
     @property # parameters info getter
     @abstractmethod
@@ -35,13 +35,6 @@ class Instrument(Yamlable):
         """
         Get the parameter dict of this instrument.
         """
-
-    @property # name getter
-    def name(self):
-        """
-        Get the name of this instrument.
-        """
-        return self._name
 
 class PhysicalInstrument(Instrument):
     """
