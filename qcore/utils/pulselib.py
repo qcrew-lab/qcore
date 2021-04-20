@@ -48,8 +48,6 @@ class Waveform(Yamlable):
     sample/samples. Func is a lambda.
     """
     def __init__(self, name: str, func: str, func_params: dict):
-        self.name = name
-
         # TODO better error handling
         self.func_name = func
         try:
@@ -58,6 +56,8 @@ class Waveform(Yamlable):
             print('func_name does not correspond to a func defined in pulselib')
 
         self.func_params = func_params
+
+        super().__init__(name=name)
 
     def get_samples(self):
         return self.func(**self.func_params)
@@ -113,10 +113,10 @@ class Pulse(Yamlable):
     Assume MIX INPUTS!!!
     """
     def __init__(self, name: str, length: int, waveforms: dict):
-        self.name = name
         # TODO validate against QM type rules for pulse lengths
         self.length = length
         self.waveforms = waveforms
+        super().__init__(name=name)
 
     def _create_yaml_map(self):
         yaml_map = {
