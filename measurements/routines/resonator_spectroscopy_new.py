@@ -17,11 +17,11 @@ class ResonatorSpectroscopy(Measurement):
     """
     TODO - WRITE CLASS DOCU
     """
-    def __init__(self, name: str, reps: int, wait_time: int, rr_f_vec,
-                 rr_ascale: float, qubit_ascale = None, 
+    def __init__(self, name: str, quantum_machine, reps: int, wait_time: int,
+                 rr_f_vec, rr_ascale: float, qubit_ascale = None, 
                  qubit_pulse = None):
     
-        super().__init__(name=name)
+        super().__init__(name=name, quantum_machine = quantum_machine)
         
         self._create_parameters(reps, wait_time, rr_f_vec, rr_ascale, 
                                 qubit_ascale, qubit_pulse)
@@ -42,20 +42,21 @@ class ResonatorSpectroscopy(Measurement):
         
         # Checks whether a qubit pulse is played and whether the information is 
         # complete.
-        play_qubit_pulse = True if self._qubit_ascale else False
-        if play_qubit_pulse and not qubit_pulse:
+        play_qubit_pulse = True if self._qubit_ascale.value else False
+        if play_qubit_pulse and not self._qubit_pulse.value:
             print('ERROR: Pass the qubit pulse name using qubit_pulse input.')
             return
 
         # Rearranges the input parameters in arrays over which QUA can 
         # iterate.         
-        parameter_list = [list(x.flatten()) 
-                           for x in np.meshgrid(self._wait_time,
-                                                self._rr_ascale, 
-                                                self._qubit_ascale)]
-        
+        parameter_list = [(x.flatten()) 
+                          for x in np.meshgrid(self._wait_time.value,
+                                               self._rr_ascale.value, 
+                                               self._qubit_ascale.value)]
+        print(self._rr_f_vec.value)
+        print(parameter_list[0])
         # Defines buffer size for averaging
-        buffer_size = len(self._rr_f_vec)*len(parameter_list[0])
+        buffer_size = len(self._rr_f_vec.value)*len(parameter_list[0])
         
         with program() as rr_spec:
             # Iteration variable
@@ -67,6 +68,12 @@ class ResonatorSpectroscopy(Measurement):
             rr_a = declare(fixed)
             qu_a = declare(fixed)
             
+            # Arrays for sweeping
+            rr_f_vec = declare(fixed, value=self._rr_f_vec.value)
+            rr_a_vec = declare(fixed, value=parameter_list[1])
+            qu_a_vec = declare(fixed, value=parameter_list[2])
+            wt_vec = declare(int, value=parameter_list[0])
+            
             # Outputs
             I = declare(fixed)
             Q = declare(fixed)
@@ -75,12 +82,12 @@ class ResonatorSpectroscopy(Measurement):
             I_st = declare_stream()
             Q_st = declare_stream()
             
-            with for_(n, 0, n < self._reps, n + 1):
+            with for_(n, 0, n < self._reps.value, n + 1):
                 # Should first loop over the parameters for adequate buffering
-                with for_each_((wt, rr_a, qu_a), parameter_list):
-                    with for_each_(rr_f, self._rr_f_vec):
+                with for_each_((wt, rr_a, qu_a), (wt_vec, rr_a_vec, qu_a_vec)):
+                    with for_each_(rr_f, rr_f_vec):
                         update_frequency("rr", rr_f)
-                        play(self._qubit_pulse * amp(qu_a), 
+                        play(self._qubit_pulse.value * amp(qu_a), 
                             'qubit', condition = play_qubit_pulse)
                         align('qubit', 'rr')
                         measure("long_readout" * amp(rr_a), "rr", None, 
@@ -124,14 +131,16 @@ class ResonatorSpectroscopy(Measurement):
         # Slice the spectroscopy results and index with the corresponding
         # parameters used.
         parameter_list = [list(x.flatten()) 
-                          for x in np.meshgrid(self._wait_time,
-                                               self._rr_ascale, 
-                                               self._qubit_ascale)]
+                           for x in np.meshgrid(self._wait_time.value,
+                                                self._rr_ascale.value, 
+                                                self._qubit_ascale.value)]
         
         results = {}
         for i, par in enumerate(zip(*parameter_list)):
-            sliced_I = I_list[len(self._rr_f_vec)*i:len(self._rr_f_vec)*(i+1)]
-            sliced_Q = Q_list[len(self._rr_f_vec)*i:len(self._rr_f_vec)*(i+1)]
+            start_index = len(self._rr_f_vec.value)*i
+            end_index = len(self._rr_f_vec.value)*(i+1)
+            sliced_I = I_list[start_index:end_index]
+            sliced_Q = Q_list[start_index:end_index]
             results[par] = {'I': sliced_I, 'Q': sliced_Q}
         
         return results
@@ -153,7 +162,7 @@ class ResonatorSpectroscopy(Measurement):
                               value=rr_f_vec, unit='Hz')
         self.create_parameter(name='Resonator pulse amp. scaling', 
                               value=rr_ascale, unit='unit')
-        self.create_parameter(name='Qubit pulse amplitude scaling', 
+        self.create_parameter(name='Qubit pulse amp. scaling', 
                               value=qubit_ascale, unit='unit')
         self.create_parameter(name='Qubit pulse name', 
                               value=qubit_pulse)

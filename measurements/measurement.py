@@ -16,8 +16,9 @@ class Measurement(Yamlable):
     
     The class provides the methods to queue a job and to diagnose its status.
     """
-    def __init__(self, name: str):
+    def __init__(self, name: str, quantum_machine):
         self._name = name
+        self._quantum_machine = quantum_machine
 
     @abstractmethod
     def _create_parameters(self):
@@ -69,10 +70,10 @@ class Measurement(Yamlable):
         TODO
         """
         
-        if self.queued_job():
+        if self.queued_job:
             print('Overwriting last job. ')
         
-        self.queued_job = qm.queue.add(self._script())
+        self.queued_job = self._quantum_machine.queue.add(self._script())
         q_position = self.queued_job.position_in_queue()
         job_id = queued_job.id()
         
