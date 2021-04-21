@@ -9,9 +9,9 @@ from pathlib import Path # changes made by Atharv are signed as 'aj'
 
 # dll must be in the same directory as this api # aj
 DLL_NAME = 'sa_api.dll' # aj
-PATH_T0_DLL = Path(__file__).resolve().parent / DLL_NAME # aj
+PATH_TO_DLL = Path(__file__).resolve().parent / DLL_NAME # aj
 #salib = CDLL("sadevice/sa_api.dll") # aj
-salib = CDLL(str(PATH_T0_DLL)) # aj
+salib = CDLL(str(PATH_TO_DLL)) # aj
 
 # ---------------------------------- Defines -----------------------------------
 
@@ -191,7 +191,8 @@ def error_check(func):
         if status != 0:
             print (f"{'Error' if status < 0 else 'Warning'} {status}: {sa_get_error_string(status)} in {func.__name__}()")
         if status < 0:
-            exit()
+            #exit() # aj
+            raise RuntimeError('See error string for details...') #aj
         return return_vars
     return print_status_if_error
 
