@@ -4,7 +4,7 @@ device_A: !QuantumDevice
   name: device_A
   qubit: !QuantumElement
     name: qubit
-    lo_freq: 5.00e+09
+    lo_freq: &qubit_lo 5.00e+09
     int_freq: 5.00e+07
     ports:
       I: 1
@@ -33,7 +33,7 @@ device_A: !QuantumDevice
           Q: *id001
   rr: !QuantumElement
     name: rr
-    lo_freq: 8.00e+09
+    lo_freq: &rr_lo 8.00e+09
     int_freq: -5.00e+07
     ports:
       I: 3
@@ -52,12 +52,12 @@ device_A: !QuantumDevice
 lb_qubit: !LabBrick
   name: lb_qubit
   serial_number: 25331
-  frequency: 5.00e+09
+  frequency: *qubit_lo
   power: 15
 lb_rr: !LabBrick
   name: lb_rr
   serial_number: 25335
-  frequency: 8.00e+09
+  frequency: *rr_lo
   power: 13
 sa: !Sa124
   name: sa
