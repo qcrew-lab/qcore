@@ -75,7 +75,7 @@ class Measurement(Yamlable):
         
         self.queued_job = self._quantum_machine.queue.add(self._script())
         q_position = self.queued_job.position_in_queue()
-        job_id = queued_job.id()
+        job_id = self.queued_job.id()
         
         print('Job in queue position #%d (ID: %s)' % (q_position, job_id))
         
@@ -94,7 +94,7 @@ class Measurement(Yamlable):
         if has_canceled:
             print('Job was canceled successfully')
         else:
-            print('Job has already been completed.')
+            print('Job is running or has already been completed.')
             
         return
     

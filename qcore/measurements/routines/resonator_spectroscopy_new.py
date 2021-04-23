@@ -53,8 +53,12 @@ class ResonatorSpectroscopy(Measurement):
                           for x in np.meshgrid(self._wait_time.value,
                                                self._rr_ascale.value, 
                                                self._qubit_ascale.value)]
-        print(self._rr_f_vec.value)
-        print(parameter_list[0])
+        
+        # Names each parameter list and converts types when necessary
+        wt_vec_py = [int(x) for x in parameter_list[0]]
+        rr_a_vec_py = parameter_list[1]
+        qu_a_vec_py = parameter_list[2]
+        
         # Defines buffer size for averaging
         buffer_size = len(self._rr_f_vec.value)*len(parameter_list[0])
         
@@ -63,16 +67,16 @@ class ResonatorSpectroscopy(Measurement):
             n = declare(int)
             
             # Spectroscopy parameters
-            wt = declare(int)
             rr_f = declare(int)
+            wt = declare(int)
             rr_a = declare(fixed)
             qu_a = declare(fixed)
             
             # Arrays for sweeping
-            rr_f_vec = declare(fixed, value=self._rr_f_vec.value)
-            rr_a_vec = declare(fixed, value=parameter_list[1])
-            qu_a_vec = declare(fixed, value=parameter_list[2])
-            wt_vec = declare(int, value=parameter_list[0])
+            rr_f_vec = declare(int, value=self._rr_f_vec.value)
+            wt_vec = declare(int, value=wt_vec_py)
+            rr_a_vec = declare(fixed, value=rr_a_vec_py)
+            qu_a_vec = declare(fixed, value=qu_a_vec_py)
             
             # Outputs
             I = declare(fixed)
@@ -103,7 +107,7 @@ class ResonatorSpectroscopy(Measurement):
 
         return rr_spec
 
-    def results(wait = False, timeout:float = None):
+    def results(self, wait = False, timeout:float = None):
         '''
         Retrieves the experiment results if the job is complete. Else, throws 
         an error message and returns None. If wait = True, halts script 
@@ -145,7 +149,7 @@ class ResonatorSpectroscopy(Measurement):
         
         return results
 
-    def save_results(filename, wait = False, timeout:float = None):
+    def save_results(self, filename, wait = False, timeout:float = None):
         '''
         Retrieves the experiment results if the job is complete and saves 
         them in a .npz file with the given name. If the job is not complete, 
