@@ -2,7 +2,7 @@ import numpy as np
 from qm.qua import *
 
 def script(F_START, F_STOP, F_STEP, REPS, WAIT_TIME,
-                   rr_amp_scale, qubit_amp_scale = None):
+                   rr_amp_scale, qubit_amp_scale = None, qubit_pulse = None):
     
     F_VEC = np.arange(F_START, F_STOP, F_STEP)
     
@@ -20,7 +20,7 @@ def script(F_START, F_STOP, F_STEP, REPS, WAIT_TIME,
             with for_(n, 0, n < REPS, n + 1):
                 with for_(f, F_START, f > F_STOP, f + F_STEP):
                     update_frequency("rr", f)
-                    play('saturation'*amp(qubit_amp_scale), 'qubit')
+                    play(qubit_pulse*amp(qubit_amp_scale), 'qubit')
                     align('qubit', 'rr')
                     measure("long_readout" * amp(rr_amp_scale), "rr", None, 
                             demod.full('long_integW1', I), 
@@ -61,9 +61,10 @@ def script(F_START, F_STOP, F_STEP, REPS, WAIT_TIME,
     return rr_spec
 
 def run(qm, F_START, F_STOP, F_STEP, REPS, WAIT_TIME, rr_amp_scale, 
-        qubit_amp_scale = None):
+        qubit_amp_scale = None, qubit_pulse = None):
     qua_script = script(F_START, F_STOP, F_STEP, REPS, WAIT_TIME, rr_amp_scale,
-                        qubit_amp_scale)
+                        qubit_amp_scale= qubit_amp_scale, 
+                        qubit_pulse = qubit_pulse)
     
     queued_job = qm.queue.add(qua_script)
     job = queued_job.wait_for_execution()

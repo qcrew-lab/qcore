@@ -179,14 +179,29 @@ class ResonatorSpectroscopy(Measurement):
                            'reps': [], 
                            'qubit_pulse': []}
         
+        # results_dict saves I and Q arrays labeled by integers (e.g. I_list_1)
+        # , where each value corresponds to a frequency in rr_f_vec. The 
+        # integer corresponds to the index of the corresponding parameter in 
+        # the parameters_dict arrays.
+        results_dict = dict()
         
         for indx, params in enumerate(results.keys()):
-            results_dict['parameters'].append(params)
-            I_list = results[params]['I']
             
-        (wait_time, rr_ascale, qubit_ascale): {I:[], Q:[]}
+            # Save parameters
+            parameters_dict['wait_time'].append(params[0])
+            parameters_dict['rr_ascale'].append(params[1])
+            parameters_dict['qubit_ascale'].append(params[2])
+            parameters_dict['reps'].append(self._reps)
+            parameters_dict['qubit_pulse'].append(self._qubit_pulse)
+            
+            # Save results
+            results_dict['I_list_%d' % indx] = results[params]['I']
+            results_dict['Q_list_%d' % indx] = results[params]['Q']
         
-        return results
+        # Saves the dictionaries to the file with given name
+        np.savez(filename, **results_dict, **parameters_dict, **freq_range_dict)
+        
+        return 
 
     def _setup(self):
         """
