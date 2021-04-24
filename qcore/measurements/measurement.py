@@ -160,7 +160,7 @@ class Measurement(Yamlable):
             print('Job was not queued. Use queue_job().')
             return 
 
-    def _result_handles(wait = False, timeout:float = None):
+    def _result_handles(self, wait = False, timeout:float = None):
         """
         TODO
         """

@@ -17,14 +17,14 @@ class ResonatorSpectroscopy(Measurement):
     """
     TODO - WRITE CLASS DOCU
     """
-    def __init__(self, name: str, quantum_machine, reps: int, wait_time: int,
-                 rr_f_vec, rr_ascale: float, qubit_ascale = None, 
-                 qubit_pulse = None):
+    def __init__(self, name: str, quantum_machine, reps: int, wait_time,
+                 rr_f_vec, rr_ascale, qubit_ascale = 0.0, 
+                 qubit_pulse = None, error_bar = False):
     
         super().__init__(name=name, quantum_machine = quantum_machine)
         
         self._create_parameters(reps, wait_time, rr_f_vec, rr_ascale, 
-                                qubit_ascale, qubit_pulse)
+                                qubit_ascale, qubit_pulse, error_bar)
         self._setup()
         self.queued_job = None
 
@@ -42,9 +42,9 @@ class ResonatorSpectroscopy(Measurement):
         
         # Checks whether a qubit pulse is played and whether the information is 
         # complete.
-        play_qubit_pulse = True if self._qubit_ascale.value else False
-        if play_qubit_pulse and not self._qubit_pulse.value:
-            print('ERROR: Pass the qubit pulse name using qubit_pulse input.')
+        play_qubit_pulse = True if self._qubit_pulse.value else False
+        if play_qubit_pulse and not self._qubit_ascale.value:
+            print('ERROR: Define the qubit pulse amplitude scaling.')
             return
 
         # Rearranges the input parameters in arrays over which QUA can 
@@ -91,19 +91,25 @@ class ResonatorSpectroscopy(Measurement):
                 with for_each_((wt, rr_a, qu_a), (wt_vec, rr_a_vec, qu_a_vec)):
                     with for_each_(rr_f, rr_f_vec):
                         update_frequency("rr", rr_f)
-                        play(self._qubit_pulse.value * amp(qu_a), 
-                            'qubit', condition = play_qubit_pulse)
+                        if play_qubit_pulse:
+                            play(self._qubit_pulse.value * amp(qu_a),
+                                 'qubit')
                         align('qubit', 'rr')
                         measure("long_readout" * amp(rr_a), "rr", None, 
                                 demod.full('long_integW1', I), 
                                 demod.full('long_integW2', Q))
                         wait(wt, "rr")
                         save(I, I_st)
-                        save(Q, Q_st)   
-            
-            with stream_processing():
-                I_st.buffer(buffer_size).average().save('I')
-                Q_st.buffer(buffer_size).average().save('Q')
+                        save(Q, Q_st) 
+                          
+            if self._error_bar.value:
+                with stream_processing():
+                    I_st.buffer(buffer_size).save('I')
+                    Q_st.buffer(buffer_size).save('Q')
+            else:
+                with stream_processing():
+                    I_st.buffer(buffer_size).average().save('I')
+                    Q_st.buffer(buffer_size).average().save('Q')
 
         return rr_spec
 
@@ -215,11 +221,11 @@ class ResonatorSpectroscopy(Measurement):
         return    
     
     def _create_parameters(self, reps, wait_time, rr_f_vec, rr_ascale, 
-                           qubit_ascale, qubit_pulse):
+                           qubit_ascale, qubit_pulse, error_bar):
         
         self._parameters = dict()
         self.create_parameter(name='repetitions', value=reps, unit='unit')
-        self.create_parameter(name='wait time', value=wait_time, unit='us')
+        self.create_parameter(name='wait time', value=wait_time, unit='cc')
         self.create_parameter(name='Resonator frequency sweep vector', 
                               value=rr_f_vec, unit='Hz')
         self.create_parameter(name='Resonator pulse amp. scaling', 
@@ -228,6 +234,8 @@ class ResonatorSpectroscopy(Measurement):
                               value=qubit_ascale, unit='unit')
         self.create_parameter(name='Qubit pulse name', 
                               value=qubit_pulse)
+        self.create_parameter(name='Error bar bool', 
+                              value=error_bar)
 
         self._reps = self._parameters['repetitions']
         self._wait_time = self._parameters['wait time']
@@ -235,6 +243,7 @@ class ResonatorSpectroscopy(Measurement):
         self._rr_ascale = self._parameters['Resonator pulse amp. scaling']
         self._qubit_ascale = self._parameters['Qubit pulse amp. scaling']
         self._qubit_pulse = self._parameters['Qubit pulse name']
+        self._error_bar = self._parameters['Error bar bool']
         
     def _create_yaml_map(self):
         # TODO
