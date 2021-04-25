@@ -7,6 +7,8 @@ also defines how the information is retrieved from result handles.
 """
 # --------------------------------- Imports ------------------------------------
 import numpy as np
+from scipy.stats import norm
+import itertools
 
 from measurements.measurement import Measurement
 from parameter import Parameter
@@ -19,12 +21,27 @@ class ResonatorSpectroscopy(Measurement):
     """
     def __init__(self, name: str, quantum_machine, reps: int, wait_time,
                  rr_f_vec, rr_ascale, qubit_ascale = 0.0, 
-                 qubit_pulse = None, error_bar = False):
+                 qubit_pulse = None, amp_error = False):
     
         super().__init__(name=name, quantum_machine = quantum_machine)
         
         self._create_parameters(reps, wait_time, rr_f_vec, rr_ascale, 
-                                qubit_ascale, qubit_pulse, error_bar)
+                                qubit_ascale, qubit_pulse, amp_error)
+        self._setup()
+        self.queued_job = None
+
+class ResonatorSpectroscopy(Measurement):
+    """
+    TODO - WRITE CLASS DOCU
+    """
+    def __init__(self, name: str, quantum_machine, reps: int, wait_time,
+                 rr_f_vec, rr_ascale, qubit_ascale = 0.0, 
+                 qubit_pulse = None, amp_error = False):
+    
+        super().__init__(name=name, quantum_machine = quantum_machine)
+        
+        self._create_parameters(reps, wait_time, rr_f_vec, rr_ascale, 
+                                qubit_ascale, qubit_pulse, amp_error)
         self._setup()
         self.queued_job = None
 
@@ -48,35 +65,38 @@ class ResonatorSpectroscopy(Measurement):
             return
 
         # Rearranges the input parameters in arrays over which QUA can 
-        # iterate.         
+        # iterate. The arrays are given in the order of outer to inner
+        # loop.
         parameter_list = [(x.flatten()) 
-                          for x in np.meshgrid(self._wait_time.value,
+                          for x in np.meshgrid(self._qubit_ascale.value,
                                                self._rr_ascale.value, 
-                                               self._qubit_ascale.value)]
+                                               self._rr_f_vec.value,
+                                               indexing = 'ij')]
         
         # Names each parameter list and converts types when necessary
-        wt_vec_py = [int(x) for x in parameter_list[0]]
+        qu_a_vec_py = parameter_list[0]
         rr_a_vec_py = parameter_list[1]
-        qu_a_vec_py = parameter_list[2]
+        rr_f_vec_py = [int(x) for x in parameter_list[2]]
         
         # Defines buffer size for averaging
-        buffer_size = len(self._rr_f_vec.value)*len(parameter_list[0])
+        qu_a_buf = len(self._qubit_ascale.value)
+        rr_a_buf = len(self._rr_ascale.value)
+        rr_f_buf = len(self._rr_f_vec.value)
         
         with program() as rr_spec:
             # Iteration variable
             n = declare(int)
             
             # Spectroscopy parameters
-            rr_f = declare(int)
-            wt = declare(int)
-            rr_a = declare(fixed)
+            wt = declare(int, value = self._wait_time.value)
             qu_a = declare(fixed)
+            rr_a = declare(fixed)
+            rr_f = declare(int)
             
             # Arrays for sweeping
-            rr_f_vec = declare(int, value=self._rr_f_vec.value)
-            wt_vec = declare(int, value=wt_vec_py)
-            rr_a_vec = declare(fixed, value=rr_a_vec_py)
             qu_a_vec = declare(fixed, value=qu_a_vec_py)
+            rr_a_vec = declare(fixed, value=rr_a_vec_py)
+            rr_f_vec = declare(int, value=rr_f_vec_py)
             
             # Outputs
             I = declare(fixed)
@@ -87,43 +107,41 @@ class ResonatorSpectroscopy(Measurement):
             Q_st = declare_stream()
             
             with for_(n, 0, n < self._reps.value, n + 1):
-                # Should first loop over the parameters for adequate buffering
-                with for_each_((wt, rr_a, qu_a), (wt_vec, rr_a_vec, qu_a_vec)):
-                    with for_each_(rr_f, rr_f_vec):
-                        update_frequency("rr", rr_f)
-                        if play_qubit_pulse:
-                            play(self._qubit_pulse.value * amp(qu_a),
-                                 'qubit')
-                        align('qubit', 'rr')
-                        measure("long_readout" * amp(rr_a), "rr", None, 
-                                demod.full('long_integW1', I), 
-                                demod.full('long_integW2', Q))
-                        wait(wt, "rr")
-                        save(I, I_st)
-                        save(Q, Q_st) 
+                with for_each_((qu_a, rr_a, rr_f), 
+                               (qu_a_vec, rr_a_vec, rr_f_vec)):
+                    update_frequency("rr", rr_f)
+                    if play_qubit_pulse:
+                        play(self._qubit_pulse.value * amp(qu_a),
+                                'qubit')
+                    align('qubit', 'rr')
+                    measure("long_readout" * amp(rr_a), "rr", None, 
+                            demod.full('long_integW1', I), 
+                            demod.full('long_integW2', Q))
+                    wait(wt, "rr")
+                    save(I, I_st)
+                    save(Q, Q_st) 
                           
-            if self._error_bar.value:
+            if self._amp_error.value:
                 with stream_processing():
-                    I_st.buffer(buffer_size).save('I')
-                    Q_st.buffer(buffer_size).save('Q')
+                    I_st.buffer(qu_a_buf, rr_a_buf, rr_f_buf).save_all('I')
+                    Q_st.buffer(qu_a_buf, rr_a_buf, rr_f_buf).save_all('Q')
             else:
                 with stream_processing():
-                    I_st.buffer(buffer_size).average().save('I')
-                    Q_st.buffer(buffer_size).average().save('Q')
+                    (I_st.buffer(qu_a_buf, rr_a_buf, rr_f_buf)
+                     .average().save('I'))
+                    (Q_st.buffer(qu_a_buf, rr_a_buf, rr_f_buf)
+                     .average().save('Q'))
 
         return rr_spec
-
+    
+    
     def results(self, wait = False, timeout:float = None):
         '''
         Retrieves the experiment results if the job is complete. Else, throws 
         an error message and returns None. If wait = True, halts script 
         execution until the job is completed.
         
-        Returns:
-            results: a dictionary which keys are tuples of parameter values
-            (wait_time, rr_ascale, qubit_ascale) and values are dictionaries 
-            {'I': [], 'Q': []} returning the measured I and Q values for the 
-            frequency range defined in rr_f_vec. 
+        Returns: [TODO] 
         '''
         
         # Get result handles and I and Q lists.
@@ -135,25 +153,34 @@ class ResonatorSpectroscopy(Measurement):
         I_handle = res_handles.get('I')
         Q_handle = res_handles.get('Q')
         
-        I_list = I_handle.fetch_all()
-        Q_list = Q_handle.fetch_all()
+        I_list = I_handle.fetch_all(flat_struct=True)
+        Q_list = Q_handle.fetch_all(flat_struct=True)
         
-        # Slice the spectroscopy results and index with the corresponding
-        # parameters used.
-        parameter_list = [list(x.flatten()) 
-                           for x in np.meshgrid(self._wait_time.value,
-                                                self._rr_ascale.value, 
-                                                self._qubit_ascale.value)]
-        
-        results = {}
-        for i, par in enumerate(zip(*parameter_list)):
-            start_index = len(self._rr_f_vec.value)*i
-            end_index = len(self._rr_f_vec.value)*(i+1)
-            sliced_I = I_list[start_index:end_index]
-            sliced_Q = Q_list[start_index:end_index]
-            results[par] = {'I': sliced_I, 'Q': sliced_Q}
-        
-        return results
+        if self._amp_error.value:
+            # Loop over inner matrix, calculate the amplitude of I + 1jQ
+            # and fit it to gaussian.
+            
+            qu_a_len = len(self._qubit_ascale.value)
+            rr_a_len = len(self._rr_ascale.value)
+            rr_f_len = len(self._rr_f_vec.value)
+            
+            qu_a_range = range(qu_a_len)
+            rr_a_range = range(rr_a_len)
+            rr_f_range = range(rr_f_len)
+            
+            amp_std_list = np.zeros(qu_a_len, rr_a_len, rr_f_len)
+            for i,j,k in itertools.product(qu_a_range, rr_a_range, rr_f_range):
+                rep_I_list = I_list[:, i, j, k]
+                rep_I_list = Q_list[:, i, j, k]
+                rep_amp_list = np.abs(rep_I_list + 1j*rep_I_list)
+                amp_std_list[i,j,k] = norm.fit(rep_amp_list)[1]
+                
+            avg_I_list = np.average(I_list, axis = 0)
+            avg_Q_list = np.average(Q_list, axis = 0)
+            
+            return {'I':avg_I_list, 'Q':avg_Q_list, 'amp_error':amp_std_list} 
+        else:
+            return {'I':I_list, 'Q':Q_list}
 
     def save_results(self, filename, wait = False, timeout:float = None):
         '''
@@ -221,7 +248,19 @@ class ResonatorSpectroscopy(Measurement):
         return    
     
     def _create_parameters(self, reps, wait_time, rr_f_vec, rr_ascale, 
-                           qubit_ascale, qubit_pulse, error_bar):
+                           qubit_ascale, qubit_pulse, amp_error):
+        """
+        TODO create better variable check
+        """
+        
+        if type(rr_f_vec).__name__ not in ['list', 'ndarray']:
+            rr_f_vec = [rr_f_vec]
+            
+        if type(rr_ascale).__name__ not in ['list', 'ndarray']:
+            rr_ascale = [rr_ascale]
+            
+        if type(qubit_ascale).__name__ not in ['list', 'ndarray']:
+            qubit_ascale = [qubit_ascale]
         
         self._parameters = dict()
         self.create_parameter(name='repetitions', value=reps, unit='unit')
@@ -234,8 +273,8 @@ class ResonatorSpectroscopy(Measurement):
                               value=qubit_ascale, unit='unit')
         self.create_parameter(name='Qubit pulse name', 
                               value=qubit_pulse)
-        self.create_parameter(name='Error bar bool', 
-                              value=error_bar)
+        self.create_parameter(name='Amplitude error bar bool', 
+                              value=amp_error)
 
         self._reps = self._parameters['repetitions']
         self._wait_time = self._parameters['wait time']
@@ -243,7 +282,7 @@ class ResonatorSpectroscopy(Measurement):
         self._rr_ascale = self._parameters['Resonator pulse amp. scaling']
         self._qubit_ascale = self._parameters['Qubit pulse amp. scaling']
         self._qubit_pulse = self._parameters['Qubit pulse name']
-        self._error_bar = self._parameters['Error bar bool']
+        self._amp_error = self._parameters['Amplitude error bar bool']
         
     def _create_yaml_map(self):
         # TODO
