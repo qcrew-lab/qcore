@@ -9,7 +9,6 @@ from utils.yamlizer import Yamlable
 class Measurement(Yamlable):
     """
     Abstract base class for Measurement.
-
     A Measurement has a name and is a container of Parameters. It has methods to
     add, remove, create a given parameter. Can be loaded from or saved to yaml
     file as it inherits from yamlable.
@@ -57,13 +56,6 @@ class Measurement(Yamlable):
         Performs the measurement and saves the results in a database.
         """
         pass
-
-    @abstractmethod
-    def results(self):
-        """
-        Retrieves the results.
-        """
-        pass
     
     def queue_job(self):
         """
@@ -74,10 +66,11 @@ class Measurement(Yamlable):
             print('Overwriting last job. ')
         
         self.queued_job = self._quantum_machine.queue.add(self._script())
-        q_position = self.queued_job.position_in_queue()
+        q_posit = self.queued_job.position_in_queue()
         job_id = self.queued_job.id()
         
-        print('Job in queue position #%d (ID: %s)' % (q_position, job_id))
+        if type(q_position).__name__ == 'int':
+            print('Job in queue position #%d (ID: %s)' % (q_posit, job_id))
         
         return
     
@@ -174,3 +167,25 @@ class Measurement(Yamlable):
         res_handles.wait_for_all_values()
         
         return res_handles
+
+    def results(self, wait = False, timeout:float = None):
+        '''
+        Retrieves the experiment results if the job is complete. Else, throws 
+        an error message and returns None. If wait = True, halts script 
+        execution until the job is completed.
+        
+        Returns: [TODO] 
+        '''
+        
+        # Get result handles and I and Q lists.
+        res_handles = self._result_handles(wait = wait, timeout = timeout)
+        
+        if not res_handles:
+            return
+        
+        results = {}
+        for tag in self._result_tags:
+            results[tag] = res_handles.get(tag).fetch_all(flat_struct = True)
+        
+        return results
+
