@@ -36,3 +36,4 @@ with program() as cw:
         play('CW', rr.name)
 
 job = qm.execute(cw)
+job.halt()
