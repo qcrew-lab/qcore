@@ -18,7 +18,7 @@ class QubitT1(Measurement):
     """
     TODO - WRITE CLASS DOCU
     """
-    def __init__(self, name, quantum_machine, reps, wait_time, tau
+    def __init__(self, name, quantum_machine, reps, wait_time, tau,
                  rr_f, rr_ascale, qubit_f, qubit_ascale, qubit_pulse, 
                  average = True):
     
@@ -43,19 +43,19 @@ class QubitT1(Measurement):
         """
 
         # Defines buffer size for averaging
-        tau_buf = len(self._tau_vec.value)
+        tau_buf = len(self._tau.value)
         
         with program() as qubit_T1:
             # Iteration variable
             n = declare(int)
             
             # QUA variables
-            tau = declare(int)
-            qu_a = declare(fixed, self._qubit_ascale.value)
-            rr_a = declare(fixed, self._rr_ascale.value)
+            t = declare(int)
+            qu_a = declare(fixed, value = self._qubit_ascale.value)
+            rr_a = declare(fixed, value = self._rr_ascale.value)
 
             # Arrays for sweeping
-            tau_vec = declare(int, value=self._tau_vec.value)
+            tau = declare(int, value=self._tau.value)
             
             # Outputs
             I = declare(fixed)
@@ -69,9 +69,9 @@ class QubitT1(Measurement):
             update_frequency('rr', self._rr_f.value)
 
             with for_(n, 0, n < self._reps.value, n + 1):
-                with for_each_(tau, tau_vec):
+                with for_each_(t, tau):
                     play(self._qubit_pulse.value * amp(qu_a), 'qubit')
-               		wait(tau, 'qubit')
+                    wait(t, 'qubit')
                     align('qubit', 'rr')
                     measure("long_readout" * amp(rr_a), 
                             "rr", None, 
@@ -94,14 +94,14 @@ class QubitT1(Measurement):
 
         return qubit_T1
 
-    def _create_parameters(self, reps, wait_time, tau_vec, rr_f, rr_ascale, 
+    def _create_parameters(self, reps, wait_time, tau, rr_f, rr_ascale, 
                            qubit_f, qubit_ascale, qubit_pulse, average):
         """
         TODO create better variable check
         """
             
-        if type(tau_vec).__name__ not in ['list', 'ndarray']:
-            tau_vec = [int(x) for x in tau_vec]
+        if type(tau).__name__ not in ['list', 'ndarray']:
+            tau = [tau]
         
         qubit_f = int(qubit_f)
         rr_f = int(rr_f)
@@ -127,7 +127,7 @@ class QubitT1(Measurement):
 
         self._reps = self._parameters['Repetitions']
         self._wait_time = self._parameters['Wait time']
-        self._tau_vec= self._parameters['Qubit relaxation time']
+        self._tau= self._parameters['Qubit relaxation time']
         self._rr_f = self._parameters['Resonator frequency']
         self._rr_ascale = self._parameters['Resonator pulse amp. scaling']
         self._qubit_f = self._parameters['Qubit frequency']

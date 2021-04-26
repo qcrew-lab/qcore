@@ -18,7 +18,7 @@ class PowerRabi(Measurement):
     """
     TODO - WRITE CLASS DOCU
     """
-    def __init__(self, name, quantum_machine, reps, wait_time, rr_f
+    def __init__(self, name, quantum_machine, reps, wait_time, rr_f,
                  rr_ascale, qubit_f, qubit_ascale, qubit_pulse, average = True):
     
         super().__init__(name=name, quantum_machine = quantum_machine)

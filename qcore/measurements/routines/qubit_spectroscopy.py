@@ -18,7 +18,7 @@ class QubitSpectroscopy(Measurement):
     """
     TODO - WRITE CLASS DOCU
     """
-    def __init__(self, name, quantum_machine, reps, wait_time, rr_f
+    def __init__(self, name, quantum_machine, reps, wait_time, rr_f,
                  rr_ascale, qubit_f, qubit_ascale, qubit_pulse, average = True):
     
         super().__init__(name=name, quantum_machine = quantum_machine)
@@ -77,7 +77,7 @@ class QubitSpectroscopy(Measurement):
             I_st = declare_stream()
             Q_st = declare_stream()
             
-            update_frequency('rr', rr_f)
+            update_frequency('rr', self._rr_f.value)
 
             with for_(n, 0, n < self._reps.value, n + 1):
                 with for_each_((qu_a, qu_f), (qu_a_vec, qu_f_vec)):
@@ -114,7 +114,7 @@ class QubitSpectroscopy(Measurement):
         """
         
         if type(qubit_f).__name__ not in ['list', 'ndarray']:
-            qubit_f = [int(x) for x in qubit_f]
+            qubit_f = [qubit_f]
             
         if type(qubit_ascale).__name__ not in ['list', 'ndarray']:
             qubit_ascale = [qubit_ascale]

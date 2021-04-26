@@ -126,7 +126,7 @@ class ResonatorSpectroscopy(Measurement):
         """
         
         if type(rr_f).__name__ not in ['list', 'ndarray']:
-            rr_f = [int(x) for x in rr_f]
+            rr_f = [rr_f]
             
         if type(rr_ascale).__name__ not in ['list', 'ndarray']:
             rr_ascale = [rr_ascale]
