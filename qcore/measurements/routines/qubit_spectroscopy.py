@@ -95,9 +95,9 @@ class QubitSpectroscopy(Measurement):
             if self._average.value:
                 with stream_processing():
                     (I_st.buffer(qu_a_buf, qu_f_buf)
-                     .average().save('I'))
+                     .average().save_all('I'))
                     (Q_st.buffer(qu_a_buf, qu_f_buf)
-                     .average().save('Q'))
+                     .average().save_all('Q'))
             else:
                 with stream_processing():
                     I_st.buffer(qu_a_buf, qu_f_buf).save_all('I')

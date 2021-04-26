@@ -27,7 +27,6 @@ class ResonatorSpectroscopy(Measurement):
         self._create_parameters(reps, wait_time, rr_f, rr_ascale, 
                                 qubit_ascale, qubit_pulse, average)
         self._setup()
-        self.queued_job = None
 
         # Tags referring to the memory locations where the results are saved.
         # Defined in self._script() function.
@@ -108,9 +107,9 @@ class ResonatorSpectroscopy(Measurement):
             if self._average.value:
                 with stream_processing():
                     (I_st.buffer(qu_a_buf, rr_a_buf, rr_f_buf)
-                     .average().save('I'))
+                     .average().save_all('I'))
                     (Q_st.buffer(qu_a_buf, rr_a_buf, rr_f_buf)
-                     .average().save('Q'))
+                     .average().save_all('Q'))
             else:
                 with stream_processing():
                     I_st.buffer(qu_a_buf, rr_a_buf, rr_f_buf).save_all('I')

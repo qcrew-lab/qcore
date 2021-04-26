@@ -79,8 +79,8 @@ class PowerRabi(Measurement):
                           
             if self._average.value:
                 with stream_processing():
-                    I_st.buffer(qu_a_buf).average().save('I')
-                    Q_st.buffer(qu_a_buf).average().save('Q')
+                    I_st.buffer(qu_a_buf).average().save_all('I')
+                    Q_st.buffer(qu_a_buf).average().save_all('Q')
             else:
                 with stream_processing():
                     I_st.buffer(qu_a_buf).save_all('I')
