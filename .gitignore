@@ -2,4 +2,6 @@ data/
 .vscode/
 .ipynb_checkpoints/
 __pycache__/
-notebooks/
+.env
+tests/
+projects/

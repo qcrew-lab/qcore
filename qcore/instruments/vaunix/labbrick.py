@@ -5,8 +5,7 @@ Python driver for Vaunix Signal Generator LMS (LabBrick).
 from ctypes import (CDLL, c_int)
 from pathlib import Path
 
-from instruments.instrument import MetaInstrument, PhysicalInstrument
-from parameter import Parameter
+from instruments.instrument import PhysicalInstrument
 
 # --------------------------------- Driver -------------------------------------
 DLL_NAME = 'vnx_fmsynth.dll' # dll must be in the same directory as this driver
@@ -39,47 +38,45 @@ set_rf_on = VNX.fnLMS_SetRFOn
 set_test_mode = VNX.fnLMS_SetTestMode
 set_use_internal_reference = VNX.fnLMS_SetUseInternalRef
 
-# ------------------------------- Parameters -----------------------------------
-# parameter names
+# ----------------------- Constructor argument names ---------------------------
 NAME = 'name' # gettable
 SERIAL_NUMBER = 'serial_number' # gettable
-ELEMENT = 'element' # gettable
 FREQUENCY = 'frequency' # gettable and settable
 POWER = 'power' # gettable and settable
-
-# parameter default values
-DEFAULT_FREQUENCY = 5e9 
-DEFAULT_POWER = -140
 
 # ---------------------------------- Class -------------------------------------
 class LabBrick(PhysicalInstrument):
     """
     TODO write class docstring.
-    Has element as it functions as the element's LO. Updates element's LO freq
-    whenever frequency is updated.
     """
-    def __init__(self, name: str, serial_number: int,
-                 element: MetaInstrument=None, frequency: float=None,
-                 power: int=DEFAULT_POWER):
-        # TODO use try catch block in case device not authenticated
+    def __init__(self, name: str, serial_number: int, frequency: float,
+                 power: int):
         print('Trying to initialize ' + name)
         self._device_handle = self._connect(serial_number)
-        super().__init__(name=name, identifier=serial_number)
-        self._element = element
-        self._create_parameters(frequency, power)
+        super().__init__(name=name, uid=serial_number)
+        self._is_active = True # will be updated to False in disconnect()
+
+        if frequency is None or power is None:
+            raise RuntimeError('Initial freq and power cannot be None type...')
+
+        self._frequency = frequency
+        self._min_freq = None # will be updated in _initialize()
+        self._max_freq = None # will be updated in _initialize()
+
+        self._power = power
+        self._min_pow = None # will be updated in _initialize()
+        self._max_pow = None # will be updated in _initialize()
         self._initialize()
 
     def _create_yaml_map(self):
-        # TODO can we ensure the map adheres to constructor without hard coding?
         yaml_map = {NAME: self._name,
-                    SERIAL_NUMBER: self._identifier,
-                    ELEMENT: self._element,
-                    FREQUENCY: self._frequency.value,
-                    POWER: self._power.value
+                    SERIAL_NUMBER: self._uid,
+                    FREQUENCY: self._frequency,
+                    POWER: self._power
                     }
         return yaml_map
 
-    def _connect(self, serial_number: int):
+    def _connect(self, uid: int):
         set_test_mode(IS_TEST_MODE) # use a real LabBrick, not a simulated one
 
         # find serial numbers of all available labbricks
@@ -89,31 +86,19 @@ class LabBrick(PhysicalInstrument):
         serial_numbers = [get_serial_numbers(active_device_array[i])
                for i in range(num_devices)]
 
-        # TODO error handling and proper logging
+        # TODO proper error handling and logging
         # connect to device and return device handle if available
-        if serial_number in serial_numbers:
-            device_idx = serial_numbers.index(serial_number)
+        if uid in serial_numbers:
+            device_idx = serial_numbers.index(uid)
             device_handle = active_device_array[device_idx]
             connect_to_device(device_handle)
-            print('Connnected to LabBrick ' + str(serial_number))
+            print('Connnected to LabBrick ' + str(uid))
             return device_handle
-        else:
-            print('Failed to connect to LabBrick.')
 
-    def _create_parameters(self, frequency, power):
-        print('creating parameters...')
-        self._parameters = dict()
-
-        init_freq = self._element.lo_freq if frequency is None else frequency
-        self.create_parameter(name=FREQUENCY, value=init_freq, unit='Hz')
-        self.create_parameter(name=POWER, value=power, unit='dBm')
-
-        self._frequency = self._parameters[FREQUENCY]
-        self._frequency.value = self._element.lo_freq
-        self._power = self._parameters[POWER]
+        raise RuntimeError('Failed to connect to LabBrick.')
 
     def _initialize(self):
-        print('Initializing device...')
+        print('Setting initial parameters...')
         # always use external 10MHz reference
         set_use_internal_reference(self._device_handle, USE_INTERNAL_REF)
 
@@ -121,64 +106,107 @@ class LabBrick(PhysicalInstrument):
         self._update_frequency_bounds()
         self._update_power_bounds()
 
-        # start labbrick at the initial frequency and power level
-        self.frequency = (DEFAULT_FREQUENCY if self._frequency.value is None
-                          else self._frequency.value)
-        self.power = self._power.value
+        # set labbrick at initial frequency and power level
+        self.frequency = self._frequency
+        self.power = self._power
         set_rf_on(self._device_handle, RF_ON)
 
-    def disconnect(self):
-        print('disconnecting device...')
-        set_rf_on(self._device_handle, RF_OFF)
-        close_device(self._device_handle)
+        print('LabBrick is ready to use.')
 
     def _update_frequency_bounds(self):
-        min_freq = get_min_frequency(self._device_handle) * FREQ_SCALAR
-        self._frequency.minimum = min_freq
-        max_freq = get_max_frequency(self._device_handle) * FREQ_SCALAR
-        self._frequency.maximum = max_freq
+        self._min_freq = get_min_frequency(self._device_handle) * FREQ_SCALAR
+        self._max_freq = get_max_frequency(self._device_handle) * FREQ_SCALAR
 
     def _update_power_bounds(self):
-        min_pow = get_min_power(self._device_handle) * POW_SCALAR
-        self._power.minimum = min_pow
-        max_pow = get_max_power(self._device_handle) * POW_SCALAR
-        self._power.maximum = max_pow
+        self._min_pow = get_min_power(self._device_handle) * POW_SCALAR
+        self._max_pow = get_max_power(self._device_handle) * POW_SCALAR
 
     @property # frequency getter
     def frequency(self):
+        """Get current freq from device.
+
+        Returns:
+            [float]: current freq
+        """
+        if not self._is_active:
+            raise RuntimeError('This LabBrick has been disconnected!')
+
         # TODO add logging and error handling
         current_freq = get_frequency(self._device_handle) * FREQ_SCALAR * 1.0
-        print('Current freq is {:.2E}'.format(current_freq))
+        self._frequency = current_freq # just to make sure its up to date
+        print('Current freq is {:.7E}'.format(current_freq))
         return current_freq
 
     @frequency.setter
     def frequency(self, new_frequency: float):
-        if self._frequency.minimum <= new_frequency <= self._frequency.maximum:
+        """set new freq on device (must be within bounds)
+
+        Args:
+            new_frequency (float): new freq to set
+        """
+        if not self._is_active:
+            raise RuntimeError('This LabBrick has been disconnected!')
+
+        if self._min_freq <= new_frequency <= self._max_freq:
             freq_steps = int(new_frequency / FREQ_SCALAR)
             set_frequency(self._device_handle, freq_steps)
-            # TODO make setter for element lo freq and check for None
-            self._frequency.value = self._element.lo_freq = new_frequency
+            self._frequency = new_frequency
             print('Successfully set frequency to '
-                  + '{:.2E}'.format(new_frequency))
+                  + '{:.7E}'.format(new_frequency))
         else:
             print('Failed to set frequency - out of bounds')
 
     @property # power getter
     def power(self):
+        """get current power from device
+
+        Returns:
+            [int]: current power
+        """
+        if not self._is_active:
+            raise RuntimeError('This LabBrick has been disconnected!')
+
         power_level = get_power(self._device_handle)
-        max_power = self._power.maximum
-        current_power = max_power - (power_level * POW_SCALAR)
-        self._power.value = current_power
+        current_power = int(self._max_pow - (power_level * POW_SCALAR))
+        self._power = current_power # just to make sure its up to date
         print('Current power is {}'.format(current_power))
         return current_power
 
     @power.setter
     def power(self, new_power: int):
-        if self._power.minimum <= new_power <= self._power.maximum:
+        """set power on device (must be within bounds)
+
+        Args:
+            new_power (int): new power to set
+        """
+        if not self._is_active:
+            raise RuntimeError('This LabBrick has been disconnected!')
+
+        if self._min_pow <= new_power <= self._max_pow:
             power_level = int(new_power / POW_SCALAR)
             set_power_level(self._device_handle, power_level)
-            self._power.value = new_power
+            self._power = new_power
             print('Successfully set power to '
                   + '{0:{1}}'.format(new_power, '+' if new_power else ''))
         else:
             print('Failed to set power - out of bounds')
+
+    @property # parameters getter
+    def parameters(self):
+        """get current snapshot of device.
+
+        Returns:
+            [dict]: current freq and power on device
+        """
+        if not self._is_active:
+            raise RuntimeError('This LabBrick has been disconnected!')
+        return {
+            FREQUENCY: '{:.7E}'.format(self._frequency),
+            POWER: self._power
+            }
+
+    def disconnect(self):
+        set_rf_on(self._device_handle, RF_OFF)
+        close_device(self._device_handle)
+        self._is_active = False
+        print(self._name + ' disconnected!')

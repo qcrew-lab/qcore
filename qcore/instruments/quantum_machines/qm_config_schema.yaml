@@ -1,0 +1,70 @@
+# QM config schema - https://qm-docs.s3.amazonaws.com/v0.8/config/index.html
+# fields that qcrew currently does not use have been commented out
+version: 1
+controllers:
+  con1:
+    analog_outputs: {}
+    analog_inputs: {}
+    digital_outputs: {}
+    type: opx1
+elements:
+  element_name:
+    #frequency: ~
+    intermediate_frequency: ~
+    singleInput:
+      port: ~
+    smearing: ~
+    #outputPulseParameters: ~
+    time_of_flight: ~
+    #digitalInputs:
+      #digital_input_name:
+        #delay: ~
+        #port: ~
+        #output: ~
+        #buffer: ~
+    #measurement_qe: ~
+    #thread: ~
+    mixInputs:
+      I: ~
+      Q: ~
+      lo_frequency: ~
+      mixer: ~
+    singleInputCollection:
+      inputs: {}
+    #hold_offset:
+      #duration: ~
+    operations: {}
+    outputs:
+      out1: ~
+pulses:
+  pulse_name:
+    waveforms:
+      single: ~
+      I: ~
+      Q: ~
+    digital_marker: ~
+    operation: ~
+    integration_weights: {}
+    length: ~
+waveforms:
+  arbitrary_wf:
+    samples: ~
+    type: 'arbitrary'
+    #max_allowed_error: ~
+    #sampling_rate: ~
+  constant_wf:
+    sample: ~
+    type: 'constant'
+digital_waveforms:
+  digital_wf_name:
+    samples: ~
+integration_weights:
+  integ_weight_name:
+    sine: []
+    cosine: []
+mixers:
+  mixer_name: [{
+    intermediate_frequency: ~,
+    correction: ~,
+    lo_frequency: ~
+  }]
