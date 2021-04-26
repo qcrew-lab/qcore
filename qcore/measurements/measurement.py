@@ -82,13 +82,7 @@ class Measurement(Yamlable):
         self._queued_job = None
         
         print('Queueing new job.')
-        try:
-            self._queued_job = self._quantum_machine.queue.add(self._script())
-        except:
-            self._queued_job = None
-            print('QM ran into a problem.')
-            return
-
+        self._queued_job = self._quantum_machine.queue.add(self._script())
         # Waits for it to start excecution if queue is empty
         time.sleep(3)
         q_posit = self._queued_job.position_in_queue()
@@ -200,9 +194,6 @@ class Measurement(Yamlable):
         '''
         
         current_status = self._current_status()
-        
-        if current_status == 'in execution':
-            print('Returning partial results (job not concluded).')
             
         if current_status == 'queued':
             print('Job still in queue.')
@@ -225,6 +216,10 @@ class Measurement(Yamlable):
         for tag in self._result_tags:
             results[tag] = res_handles.get(tag) \
                             .fetch_all(flat_struct = True)[:max_result_len]
+        
+        if current_status == 'in execution':
+            print('Returning partial results of %d ' % max_result_len + \
+                  'iteration (job not concluded).')
         
         return results
 
