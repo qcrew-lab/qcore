@@ -219,7 +219,7 @@ class Measurement(Yamlable):
         
         if current_status == 'in execution':
             print('Returning partial results of %d ' % max_result_len + \
-                  'iteration (job not concluded).')
+                  'iterations (job not concluded).')
         
         return results
 

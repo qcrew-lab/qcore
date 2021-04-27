@@ -19,12 +19,12 @@ class PowerRabi(Measurement):
     TODO - WRITE CLASS DOCU
     """
     def __init__(self, name, quantum_machine, reps, wait_time, rr_f,
-                 rr_ascale, qubit_f, qubit_ascale, qubit_pulse, average = True):
+                 rr_ascale, qubit_f, qubit_ascale, qubit_pulse):
     
         super().__init__(name=name, quantum_machine = quantum_machine)
         
         self._create_parameters(reps, wait_time, rr_f, rr_ascale, 
-                                qubit_f, qubit_ascale, qubit_pulse, average)
+                                qubit_f, qubit_ascale, qubit_pulse)
         self._setup()
         self.queued_job = None
 
@@ -59,6 +59,8 @@ class PowerRabi(Measurement):
             Q = declare(fixed)
             
             # Streams
+            I_st_avg = declare_stream()
+            Q_st_avg = declare_stream()
             I_st = declare_stream()
             Q_st = declare_stream()
             
@@ -74,24 +76,23 @@ class PowerRabi(Measurement):
                             demod.full('long_integW1', I), 
                             demod.full('long_integW2', Q))
                     wait(self._wait_time.value, "rr")
+                    save(I, I_st_avg)
+                    save(Q, Q_st_avg) 
                     save(I, I_st)
                     save(Q, Q_st) 
-                          
-            if self._average.value:
-                with stream_processing():
-                    I_st.buffer(qu_a_buf).average().save_all('I')
-                    Q_st.buffer(qu_a_buf).average().save_all('Q')
-            else:
-                with stream_processing():
-                    I_st.buffer(qu_a_buf).save_all('I')
-                    Q_st.buffer(qu_a_buf).save_all('Q')
+                        
+            with stream_processing():
+                I_st_avg.buffer(qu_a_buf).average().save_all('I_avg')
+                Q_st_avg.buffer(qu_a_buf).average().save_all('Q_avg')
+                I_st.buffer(qu_a_buf).save_all('I')
+                Q_st.buffer(qu_a_buf).save_all('Q')
 
-        self._result_tags = ['I', 'Q']
+        self._result_tags = ['I', 'Q', 'I_avg', 'Q_avg']
 
         return power_rabi
 
     def _create_parameters(self, reps, wait_time, rr_f, rr_ascale, 
-                           qubit_f, qubit_ascale, qubit_pulse, average):
+                           qubit_f, qubit_ascale, qubit_pulse):
         """
         TODO create better variable check
         """
@@ -115,9 +116,7 @@ class PowerRabi(Measurement):
                               value=qubit_ascale, unit='unit')
         self.create_parameter(name='Qubit pulse name', 
                               value=qubit_pulse)
-        self.create_parameter(name='Compute average result bool', 
-                              value=average)
-
+        
         self._reps = self._parameters['Repetitions']
         self._wait_time = self._parameters['Wait time']
         self._rr_f = self._parameters['Resonator frequency']
@@ -125,7 +124,6 @@ class PowerRabi(Measurement):
         self._qubit_f = self._parameters['Qubit frequency']
         self._qubit_ascale = self._parameters['Qubit pulse amp. scaling']
         self._qubit_pulse = self._parameters['Qubit pulse name']
-        self._average = self._parameters['Compute average result bool']
 
     def _setup(self):
         """
