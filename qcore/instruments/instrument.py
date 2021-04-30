@@ -115,7 +115,8 @@ class MetaInstrument(Instrument):
         if 'name' in parameters:
             raise ValueError('Cannot have parameter named str(name)')
         self._parameters = dict()
-        self._create_attributes(parameters)
+        if parameters:
+            self._create_attributes(parameters)
 
     def _create_attributes(self, parameters: dict):
         """
@@ -123,8 +124,7 @@ class MetaInstrument(Instrument):
         __init__() method. Very useful when initialising objects from yaml
         files.
         """
-        if parameters is not None:
-            for param_name in parameters:
+        for param_name in parameters:
                 param_value = parameters[param_name]
                 setattr(self, param_name, param_value)
                 self._parameters[param_name] = param_value

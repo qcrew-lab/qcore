@@ -27,11 +27,11 @@ XATOL = 1e-4 # change in DC offset or gain/phase, number obtained from qm
 # absolute error in func(xopt) between iterations that is acceptable
 FATOL = 3
 
-MAXITER = 5 # should be more than enough
+MAXITER = 50 # should be more than enough
 
 # sweep acquisition parameters
 COARSE_SWEEP_RBW = 250e3
-COARSE_SWEEP_SPAN_SCALAR = 8
+COARSE_SWEEP_SPAN_SCALAR = 4
 FINE_SWEEP_RBW = 50e3
 FINE_SWEEP_SPAN_SCALAR = 1e-3
 
@@ -63,7 +63,7 @@ class MixerTuner(MetaInstrument):
     def __init__(self, name: str, sa: Sa124, qm, **parameters):
         self.sa = sa
         self.qm = qm
-        super().__init__(name, parameters=parameters)
+        super().__init__(name, **parameters)
 
     # public methods
     def tune(self, elements: set[QuantumElement]):
@@ -111,16 +111,17 @@ class MixerTuner(MetaInstrument):
         element.mixer.i_offset, element.mixer.q_offset = results[0], results[1]
 
     def _get_lo_callback_fn(self, element: QuantumElement):
-        element_name = element.name
+        elem_name = element.name
         lo_freq = element.lo_freq
-        def objective_fn(i_offset, q_offset):
-            self.qm.set_output_dc_offset_by_element(element_name, 'I', i_offset)
-            self.qm.set_output_dc_offset_by_element(element_name, 'Q', q_offset)
+        def objective_fn(offsets):
+            self.qm.set_output_dc_offset_by_element(elem_name, 'I', offsets[0])
+            self.qm.set_output_dc_offset_by_element(elem_name, 'Q', offsets[1])
             freqs, amps = self.sa.sweep() # must already be configured properly
             # guaranteed that sa output is sorted
             amp_to_minimize = amps[np.searchsorted(freqs, lo_freq)]
             # print string for debugging
-            print('I: {:.5}, Q: {:.5}, amp: {:.5}'.format(i_offset, q_offset,
+            print('I: {:.5}, Q: {:.5}, amp: {:.5}'.format(offsets[0],
+                                                          offsets[1],
                                                           amp_to_minimize))
             return amp_to_minimize
         return objective_fn
@@ -144,17 +145,17 @@ class MixerTuner(MetaInstrument):
     def _get_sb_callback_fn(self, element: QuantumElement):
         mixer_name = element.mixer.name # assume element has only 1 mixer
         sb_freq = element.lo_freq - element.int_freq
-        def objective_fn(gain_offset, phase_offset):
+        def objective_fn(offsets):
             self.qm.set_mixer_correction(mixer_name, element.int_freq,
                                          element.lo_freq,
-                                         mixer_correction(gain_offset,
-                                                       phase_offset))
+                                         mixer_correction(offsets[0],
+                                                       offsets[1]))
             freqs, amps = self.sa.sweep() # must already be configured properly
             # guaranteed that sa output is sorted
             amp_to_minimize = amps[np.searchsorted(freqs, sb_freq)]
             # print string for debugging
-            print('G: {:.5}, P: {:.5}, amp: {:.5}'.format(gain_offset,
-                                                          phase_offset,
+            print('G: {:.5}, P: {:.5}, amp: {:.5}'.format(offsets[0],
+                                                          offsets[1],
                                                           amp_to_minimize))
             return amp_to_minimize
         return objective_fn
@@ -171,24 +172,21 @@ class MixerTuner(MetaInstrument):
         if result.success:
             results = result.x
             # apply the offsets
-            min_amp = objective_fn(*results)
-            print('Success! I_offset: {:.5}, Q_offset: {:.5}, amp: {:.5}'
-                  .format(results[0], results[1], min_amp))
+            min_amp = objective_fn(results)
         else:
             results = init_guesses
             # apply init guesses as offsets
-            print('Failed! {}'.format(result.message))
-            min_amp = objective_fn(*results)
+            min_amp = objective_fn(results)
             print('Applied initial guesses as offsets, amp: {:.5}'
                   .format(min_amp))
-
-        # show a coarse sweep after tuning
-        print('After tuning {} LO leakage...'.format(element.name))
-        self._show_coarse_sweep(element)
 
         # show time elapsed
         elapsed_time = time.perf_counter() - start_time
         print('Minimization took {:.5}s'.format(elapsed_time))
+
+        # show a coarse sweep after tuning
+        print('After tuning {} LO leakage...'.format(element.name))
+        self._show_coarse_sweep(element)
 
         return results
 
@@ -197,16 +195,26 @@ class MixerTuner(MetaInstrument):
 
         freqs, amps = self.sa.sweep(**parameters)
         plt.plot(freqs, amps)
+        plt.show()
 
         elapsed_time = time.perf_counter() - start_time
         print('Sweep took {:.5}s'.format(elapsed_time))
 
     def _show_coarse_sweep(self, element: QuantumElement):
         self._show_sweep(center = element.lo_freq,
-                        span = element.int_freq * COARSE_SWEEP_SPAN_SCALAR,
+                        span = abs(element.int_freq * COARSE_SWEEP_SPAN_SCALAR),
                         rbw = COARSE_SWEEP_RBW)
 
     def _show_fine_sweep(self, center):
         self._show_sweep(center = center,
                         span = center * FINE_SWEEP_SPAN_SCALAR,
                         rbw = FINE_SWEEP_RBW)
+
+    def _create_yaml_map(self):
+        return {
+            'name': self.name
+        }
+
+    @property
+    def parameters(self):
+        return 'WORK IN PROGRESS'
