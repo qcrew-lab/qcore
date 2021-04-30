@@ -21,6 +21,7 @@ class Measurement(Yamlable):
         self._quantum_machine = quantum_machine
         self._job = None
         self._queued_job = None
+        self.saved_results = []
 
     @abstractmethod
     def _create_parameters(self):
@@ -80,6 +81,7 @@ class Measurement(Yamlable):
         
         self._job = None
         self._queued_job = None
+        self.saved_results = None
         
         print('Queueing new job.')
         self._queued_job = self._quantum_machine.queue.add(self._script())
@@ -109,6 +111,7 @@ class Measurement(Yamlable):
             self._job.halt()
             self._job = None
             self._queued_job = None
+            self.saved_results = None
             print('Job was interrupted and erased.')
             return
         
@@ -116,6 +119,7 @@ class Measurement(Yamlable):
             self._queued_job.cancel()
             self._job = None
             self._queued_job = None
+            self.saved_results = None
             print('Queued Job was removed and erased.')
             return
         
@@ -174,7 +178,6 @@ class Measurement(Yamlable):
         TODO
         """
         
-        
         current_status = self._current_status()
         
         if current_status == 'not queued':
@@ -189,9 +192,11 @@ class Measurement(Yamlable):
 
     def results(self):
         '''
-        
         Returns: [TODO] 
         '''
+        
+        #previous_results = self.saved_results
+        #previous_N = len(previous_results)
         
         current_status = self._current_status()
             
@@ -216,10 +221,12 @@ class Measurement(Yamlable):
         for tag in self._result_tags:
             results[tag] = res_handles.get(tag) \
                             .fetch_all(flat_struct = True)[:max_result_len]
+                            #.fetch(slice(0, -(previous_N + 1)), flat_struct = True)[:max_result_len]
         
         if current_status == 'in execution':
             print('Returning partial results of %d ' % max_result_len + \
                   'iterations (job not concluded).')
         
         return results
+
 
