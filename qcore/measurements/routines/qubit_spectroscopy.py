@@ -18,13 +18,13 @@ class QubitSpectroscopy(Measurement):
     """
     TODO - WRITE CLASS DOCU
     """
-    def __init__(self, name, quantum_machine, reps, wait_time, rr_f
-                 rr_ascale, qubit_f, qubit_ascale, qubit_pulse, average = True):
+    def __init__(self, name, quantum_machine, reps, wait_time, rr_f,
+                 rr_ascale, qubit_f, qubit_ascale, qubit_pulse):
     
         super().__init__(name=name, quantum_machine = quantum_machine)
         
         self._create_parameters(reps, wait_time, rr_f, rr_ascale, 
-                                qubit_f, qubit_ascale, qubit_pulse, average)
+                                qubit_f, qubit_ascale, qubit_pulse)
         self._setup()
         self.queued_job = None
 
@@ -74,10 +74,12 @@ class QubitSpectroscopy(Measurement):
             Q = declare(fixed)
             
             # Streams
+            I_st_avg = declare_stream()
+            Q_st_avg = declare_stream()
             I_st = declare_stream()
             Q_st = declare_stream()
             
-            update_frequency('rr', rr_f)
+            update_frequency('rr', self._rr_f.value)
 
             with for_(n, 0, n < self._reps.value, n + 1):
                 with for_each_((qu_a, qu_f), (qu_a_vec, qu_f_vec)):
@@ -89,32 +91,29 @@ class QubitSpectroscopy(Measurement):
                             demod.full('long_integW1', I), 
                             demod.full('long_integW2', Q))
                     wait(self._wait_time.value, "rr")
+                    save(I, I_st_avg)
+                    save(Q, Q_st_avg) 
                     save(I, I_st)
                     save(Q, Q_st) 
                           
-            if self._average.value:
-                with stream_processing():
-                    (I_st.buffer(qu_a_buf, qu_f_buf)
-                     .average().save('I'))
-                    (Q_st.buffer(qu_a_buf, qu_f_buf)
-                     .average().save('Q'))
-            else:
-                with stream_processing():
-                    I_st.buffer(qu_a_buf, qu_f_buf).save_all('I')
-                    Q_st.buffer(qu_a_buf, qu_f_buf).save_all('Q')
+            with stream_processing():
+                I_st_avg.buffer(qu_a_buf, qu_f_buf).average().save_all('I_avg')
+                Q_st_avg.buffer(qu_a_buf, qu_f_buf).average().save_all('Q_avg')
+                I_st.buffer(qu_a_buf, qu_f_buf).save_all('I')
+                Q_st.buffer(qu_a_buf, qu_f_buf).save_all('Q')
 
-        self._result_tags = ['I', 'Q']
+        self._result_tags = ['I', 'Q', 'I_avg', 'Q_avg']
 
         return qubit_spec
 
     def _create_parameters(self, reps, wait_time, rr_f, rr_ascale, 
-                           qubit_f, qubit_ascale, qubit_pulse, average):
+                           qubit_f, qubit_ascale, qubit_pulse):
         """
         TODO create better variable check
         """
         
         if type(qubit_f).__name__ not in ['list', 'ndarray']:
-            qubit_f = [int(x) for x in qubit_f]
+            qubit_f = [qubit_f]
             
         if type(qubit_ascale).__name__ not in ['list', 'ndarray']:
             qubit_ascale = [qubit_ascale]
@@ -135,8 +134,6 @@ class QubitSpectroscopy(Measurement):
                               value=qubit_ascale, unit='unit')
         self.create_parameter(name='Qubit pulse name', 
                               value=qubit_pulse)
-        self.create_parameter(name='Compute average result bool', 
-                              value=average)
 
         self._reps = self._parameters['Repetitions']
         self._wait_time = self._parameters['Wait time']
@@ -145,7 +142,6 @@ class QubitSpectroscopy(Measurement):
         self._qubit_f = self._parameters['Qubit frequency']
         self._qubit_ascale = self._parameters['Qubit pulse amp. scaling']
         self._qubit_pulse = self._parameters['Qubit pulse name']
-        self._average = self._parameters['Compute average result bool']
 
     def _setup(self):
         """

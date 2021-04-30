@@ -14,16 +14,16 @@ from qm.qua import *
 
 # ---------------------------------- Class -------------------------------------
 
-class PowerRabi(Measurement):
+class QubitT2(Measurement):
     """
     TODO - WRITE CLASS DOCU
     """
-    def __init__(self, name, quantum_machine, reps, wait_time, rr_f,
-                 rr_ascale, qubit_f, qubit_ascale, qubit_pulse):
+    def __init__(self, name, quantum_machine, reps, wait_time, tau,
+                 rr_f, rr_ascale, qubit_f, qubit_ascale, qubit_pulse):
     
         super().__init__(name=name, quantum_machine = quantum_machine)
         
-        self._create_parameters(reps, wait_time, rr_f, rr_ascale, 
+        self._create_parameters(reps, wait_time, tau, rr_f, rr_ascale, 
                                 qubit_f, qubit_ascale, qubit_pulse)
         self._setup()
         self.queued_job = None
@@ -42,17 +42,19 @@ class PowerRabi(Measurement):
         """
 
         # Defines buffer size for averaging
-        qu_a_buf = len(self._qubit_ascale.value)
+        tau_buf = len(self._tau.value)
         
-        with program() as power_rabi:
+        with program() as qubit_T2:
             # Iteration variable
             n = declare(int)
             
             # QUA variables
-            qu_a = declare(fixed)
-            
+            t = declare(int)
+            qu_a = declare(fixed, value = self._qubit_ascale.value)
+            rr_a = declare(fixed, value = self._rr_ascale.value)
+
             # Arrays for sweeping
-            qu_a_vec = declare(fixed, value=self._qubit_ascale.value)
+            tau = declare(int, value=self._tau.value)
             
             # Outputs
             I = declare(fixed)
@@ -68,10 +70,12 @@ class PowerRabi(Measurement):
             update_frequency('rr', self._rr_f.value)
 
             with for_(n, 0, n < self._reps.value, n + 1):
-                with for_each_(qu_a, qu_a_vec):
+                with for_each_(t, tau):
+                    play(self._qubit_pulse.value * amp(qu_a), 'qubit')
+                    wait(t, 'qubit')
                     play(self._qubit_pulse.value * amp(qu_a), 'qubit')
                     align('qubit', 'rr')
-                    measure("long_readout" * amp(self._rr_ascale.value), 
+                    measure("long_readout" * amp(rr_a), 
                             "rr", None, 
                             demod.full('long_integW1', I), 
                             demod.full('long_integW2', Q))
@@ -80,32 +84,35 @@ class PowerRabi(Measurement):
                     save(Q, Q_st_avg) 
                     save(I, I_st)
                     save(Q, Q_st) 
-                        
+                                            
             with stream_processing():
-                I_st_avg.buffer(qu_a_buf).average().save_all('I_avg')
-                Q_st_avg.buffer(qu_a_buf).average().save_all('Q_avg')
-                I_st.buffer(qu_a_buf).save_all('I')
-                Q_st.buffer(qu_a_buf).save_all('Q')
+                I_st_avg.buffer(tau_buf).average().save_all('I_avg')
+                Q_st_avg.buffer(tau_buf).average().save_all('Q_avg')
+                I_st.buffer(tau_buf).save_all('I')
+                Q_st.buffer(tau_buf).save_all('Q')
 
         self._result_tags = ['I', 'Q', 'I_avg', 'Q_avg']
 
-        return power_rabi
+        return qubit_T2
 
-    def _create_parameters(self, reps, wait_time, rr_f, rr_ascale, 
+    def _create_parameters(self, reps, wait_time, tau, rr_f, rr_ascale, 
                            qubit_f, qubit_ascale, qubit_pulse):
         """
         TODO create better variable check
         """
             
-        if type(qubit_ascale).__name__ not in ['list', 'ndarray']:
-            qubit_ascale = [qubit_ascale]
+        if type(tau).__name__ not in ['list', 'ndarray']:
+            tau = [tau]
         
         qubit_f = int(qubit_f)
+        rr_f = int(rr_f)
         wait_time = int(wait_time)
 
         self._parameters = dict()
         self.create_parameter(name='Repetitions', value=reps)
         self.create_parameter(name='Wait time', value=wait_time, unit='cc')
+        self.create_parameter(name='Qubit relaxation time', 
+                              value=tau, unit='cc')
         self.create_parameter(name='Resonator frequency', 
                               value=rr_f, unit='Hz')
         self.create_parameter(name='Resonator pulse amp. scaling', 
@@ -116,9 +123,10 @@ class PowerRabi(Measurement):
                               value=qubit_ascale, unit='unit')
         self.create_parameter(name='Qubit pulse name', 
                               value=qubit_pulse)
-        
+
         self._reps = self._parameters['Repetitions']
         self._wait_time = self._parameters['Wait time']
+        self._tau= self._parameters['Qubit relaxation time']
         self._rr_f = self._parameters['Resonator frequency']
         self._rr_ascale = self._parameters['Resonator pulse amp. scaling']
         self._qubit_f = self._parameters['Qubit frequency']
