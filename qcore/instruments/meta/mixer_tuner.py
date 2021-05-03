@@ -259,7 +259,9 @@ class MixerTuner(MetaInstrument):
             objective_fn(results, floor)
         else:
             # TODO get best results from minimization routine and apply them
-            print('IMPROVEMENT IN PROGRESS...')
+            print('Sorry, tuning failed. Improvement is under development...')
+            print('Meanwhile, please inspect the print stream and ' +
+                  'set offsets manually...')
 
         # show time elapsed
         elapsed_time = time.perf_counter() - start_time
