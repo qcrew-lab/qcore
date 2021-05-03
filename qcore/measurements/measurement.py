@@ -2,6 +2,8 @@
 Measurement.
 """
 from abc import abstractmethod
+import time
+import numpy as np
 
 from parameter import Parameter
 from utils.yamlizer import Yamlable
@@ -18,6 +20,9 @@ class Measurement(Yamlable):
     def __init__(self, name: str, quantum_machine):
         self._name = name
         self._quantum_machine = quantum_machine
+        self._job = None
+        self._queued_job = None
+        self.saved_results = {}
 
     @abstractmethod
     def _create_parameters(self):
@@ -61,16 +66,36 @@ class Measurement(Yamlable):
         """
         TODO
         """
+         
+        current_status = self._current_status()
         
-        if self.queued_job:
-            print('Overwriting last job. ')
+        if current_status == 'in execution':
+            print('Cleaning last job.')
+            self._job.halt()
         
-        self.queued_job = self._quantum_machine.queue.add(self._script())
-        q_posit = self.queued_job.position_in_queue()
-        job_id = self.queued_job.id()
+        if current_status == 'queued':
+            print('Cleaning last job.')
+            self._queued_job.cancel()
         
-        if type(q_position).__name__ == 'int':
-            print('Job in queue position #%d (ID: %s)' % (q_posit, job_id))
+        if current_status == 'concluded':
+            print('Cleaning last job.')
+        
+        self._job = None
+        self._queued_job = None
+        self.saved_results = {}
+        
+        print('Queueing new job.')
+        self._queued_job = self._quantum_machine.queue.add(self._script())
+        # Waits for it to start excecution if queue is empty
+        time.sleep(3)
+        q_posit = self._queued_job.position_in_queue()
+        job_id = self._queued_job.id()
+        
+        if q_posit == None:
+            self._job = self._queued_job.wait_for_execution()
+            print('Job in execution. (ID: %s)' % (job_id))
+        if type(q_posit).__name__ == 'int':
+            print('Job in queue position #%d. (ID: %s)' % (q_posit, job_id))
         
         return
     
@@ -78,114 +103,146 @@ class Measurement(Yamlable):
         """
         TODO
         """
-        
-        if not self.queued_job:
+        current_status = self._current_status()
+        if current_status == 'not queued':
             print('Job was not queued.')
             return
         
-        has_canceled = self.queued_job.cancel()
-        if has_canceled:
-            print('Job was canceled successfully')
-        else:
-            print('Job is running or has already been completed.')
+        if current_status == 'in execution':
+            self._job.halt()
+            self._job = None
+            self._queued_job = None
+            self.saved_results = {}
+            print('Job was interrupted and erased.')
+            return
+        
+        if current_status == 'queued':
+            self._queued_job.cancel()
+            self._job = None
+            self._queued_job = None
+            self.saved_results = {}
+            print('Queued Job was removed and erased.')
+            return
+        
+        if current_status == 'concluded':
+            print('Last job is already complete.')
+            return
+    
+    def status(self):
+        """
+        TODO
+        """
+        current_status = self._current_status()
+        
+        if current_status == 'not queued':
+            print('Job was not queued.')
             
+        if current_status == 'in execution':
+            print('Job is in execution.')
+            
+        if current_status == 'concluded':
+            print('Job has concluded.')
+            
+        if current_status == 'queued':
+            q_posit = self._queued_job.position_in_queue()
+            print('Job is queued in position #%d' % q_posit)
+        
         return
     
-    def position_in_queue(self):
+    def _current_status(self):
         """
         TODO
         """
         
-        job_exists = True if self.queued_job else False
+        was_queued = True if self._queued_job else False
         
-        if not job_exists:
+        if not was_queued:
+            return 'not queued'
+        
+        q_posit = self._queued_job.position_in_queue()
+        
+        if q_posit == None:
+            self._job = self._queued_job.wait_for_execution()
+            try: 
+                # The is_paused() function is a poor workaround to know if the
+                # job has concluded, because QM documentation doesn't have any
+                # function for this.
+                self._job.is_paused()
+                return 'in execution'
+            except:
+                return 'concluded'
+        if type(q_posit).__name__ == 'int':
+            return 'queued'
+
+    def result_handles(self):
+        """
+        TODO
+        """
+        
+        current_status = self._current_status()
+        
+        if current_status == 'not queued':
             print('Job was not queued.')
             return
         
-        position = self.queued_job.position_in_queue()
-        
-        if not position:
-            print('The job is not in the queue.')
-            return
-        else:
-            print('Job is in position #%d' % position)
-            
-        return position
-    
-    def job_status(self):
-        """
-        TODO
-        """
-        
-        job_exists = True if self.queued_job else False
-        
-        if job_exists:
-            position = self.queued_job.position_in_queue()
-            if not position:
-                return 'concluded'
-            if position == 1:
-                return 'in execution'
-            if position > 1:
-                return 'queued'
-        else:
-            return 'inexistent'
-        
-    def job(self, wait = False, timeout:float = None):
-        """
-        TODO
-        """
-        
-        if wait:
-            return self.queued_job.wait_for_execution(timeout = timeout)
-        
-        if self.job_status() == 'queued':
-            print('Job still in queue. Use wait = True to wait for conclusion')
-            return 
-        
-        if self.job_status() == 'in execution':
-            print('Job still in exec. Use wait = True to wait for conclusion')
-            return 
-        
-        if self.job_status() == 'concluded':
-            return self.queued_job.wait_for_execution()
-        
-        if self.job_status() == 'inexistent':
-            print('Job was not queued. Use queue_job().')
-            return 
-
-    def _result_handles(self, wait = False, timeout:float = None):
-        """
-        TODO
-        """
-        
-        job = self.job(wait = wait, timeout = timeout)
-        
-        if not job:
+        if current_status == 'queued':
+            print('Job still in queue.')
             return
         
-        res_handles = job.result_handles
-        res_handles.wait_for_all_values()
-        
-        return res_handles
+        return self._job.result_handles
 
-    def results(self, wait = False, timeout:float = None):
+    def results(self):
         '''
-        Retrieves the experiment results if the job is complete. Else, throws 
-        an error message and returns None. If wait = True, halts script 
-        execution until the job is completed.
-        
         Returns: [TODO] 
         '''
         
-        # Get result handles and I and Q lists.
-        res_handles = self._result_handles(wait = wait, timeout = timeout)
+        current_status = self._current_status()
+            
+        if current_status == 'queued':
+            print('Job still in queue.')
+            return
+            
+        if current_status == 'not queued':
+            print('Job was not queued.')
+            return
+        
+        res_handles = self.result_handles()
         
         if not res_handles:
             return
         
-        results = {}
-        for tag in self._result_tags:
-            results[tag] = res_handles.get(tag).fetch_all(flat_struct = True)
+        results = self.saved_results
+        if not results:
+            results = {tag:np.array([]) for tag in self._result_tags}
         
+        random_result_tag = self._result_tags[0] 
+        
+        # Counts how many new datapoints to fetch
+        prev_count = results[random_result_tag].shape[0]
+        new_count = res_handles.get(random_result_tag).count_so_far()
+        
+        if prev_count == new_count:
+            return results
+
+        for tag in self._result_tags:
+            new_results = res_handles.get(tag) \
+                                     .fetch(slice(prev_count, new_count), 
+                                            flat_struct = True) 
+            if prev_count - new_count == 1:
+                new_results = np.array([new_results])
+                # TODO correct this
+            if list(results[tag]):
+                results[tag] = np.append(results[tag], new_results, 
+                                         axis = 0)     
+            else:
+                results[tag] = new_results
+                  
+        self.saved_results = results
+
+        if current_status == 'in execution':
+            print('Returning partial results of %d ' % new_count + \
+                  'iterations (job not concluded).')
+
         return results
+
 
