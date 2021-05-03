@@ -9,6 +9,12 @@ device_A: !QuantumDevice
     ports:
       I: 1
       Q: 2
+    mixer: !QuantumElement
+      name: mixer_qubit
+      i_offset: -0.0033644
+      q_offset: -0.0093717
+      gain_offset: -0.18532
+      phase_offset: 0.12163
     operations:
       CW: &id002 !Pulse
         name: CW_pulse
@@ -39,6 +45,12 @@ device_A: !QuantumDevice
       I: 3
       Q: 4
       out: 1
+    mixer: !QuantumElement
+      name: mixer_rr
+      i_offset: 0.0049895
+      q_offset: -0.0086416
+      gain_offset: -0.16364
+      phase_offset: 0.017692
     operations:
       CW: *id002
       readout: !MeasurementPulse

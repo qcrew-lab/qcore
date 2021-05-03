@@ -32,16 +32,11 @@ def IQ_imbalance(g, phi):
 long_readout_len = 1000
 readout_len = 400
 
-qubit_IF = int(-54.12e6)
-rr_IF = int(-47.5e6) #int(-50e6)
+qubit_IF = int(-55e6)
+rr_IF = int(-47.5e6)
 
 qubit_LO = int(4.165e9)
-rr_LO = int(8.7570e9)
-
-rr_mixer_gain = 0.011903211805555558
-rr_mixer_phase = -0.007454427083333335
-rr_offset_I = -0.1584092881944445
-rr_offset_Q = 0.03345269097222221
+rr_LO = int(8.7571e9)
 
 config = {
 
@@ -54,8 +49,8 @@ config = {
             'analog_outputs': {
                 1: {'offset': 0.0},  # qubit I
                 2: {'offset': 0.0},  # qubit Q
-                3: {'offset': rr_offset_I},  # RR I
-                4: {'offset': rr_offset_Q},  # RR Q
+                3: {'offset': 0.0},  # RR I
+                4: {'offset': 0.0},  # RR Q
                 5: {'offset': 0.0},  
                 6: {'offset': 0.0},  
                 7: {'offset': 0.0},  
