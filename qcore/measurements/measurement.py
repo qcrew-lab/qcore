@@ -3,6 +3,7 @@ Measurement.
 """
 from abc import abstractmethod
 import time
+import numpy as np
 
 from parameter import Parameter
 from utils.yamlizer import Yamlable
@@ -21,7 +22,7 @@ class Measurement(Yamlable):
         self._quantum_machine = quantum_machine
         self._job = None
         self._queued_job = None
-        self.saved_results = []
+        self.saved_results = {}
 
     @abstractmethod
     def _create_parameters(self):
@@ -81,7 +82,7 @@ class Measurement(Yamlable):
         
         self._job = None
         self._queued_job = None
-        self.saved_results = None
+        self.saved_results = {}
         
         print('Queueing new job.')
         self._queued_job = self._quantum_machine.queue.add(self._script())
@@ -111,7 +112,7 @@ class Measurement(Yamlable):
             self._job.halt()
             self._job = None
             self._queued_job = None
-            self.saved_results = None
+            self.saved_results = {}
             print('Job was interrupted and erased.')
             return
         
@@ -119,7 +120,7 @@ class Measurement(Yamlable):
             self._queued_job.cancel()
             self._job = None
             self._queued_job = None
-            self.saved_results = None
+            self.saved_results = {}
             print('Queued Job was removed and erased.')
             return
         
@@ -195,9 +196,6 @@ class Measurement(Yamlable):
         Returns: [TODO] 
         '''
         
-        #previous_results = self.saved_results
-        #previous_N = len(previous_results)
-        
         current_status = self._current_status()
             
         if current_status == 'queued':
@@ -213,20 +211,38 @@ class Measurement(Yamlable):
         if not res_handles:
             return
         
-        # Fixes the length of the results
+        results = self.saved_results
+        if not results:
+            results = {tag:np.array([]) for tag in self._result_tags}
+        
         random_result_tag = self._result_tags[0] 
-        max_result_len = res_handles.get(random_result_tag).count_so_far()
         
-        results = {}
+        # Counts how many new datapoints to fetch
+        prev_count = results[random_result_tag].shape[0]
+        new_count = res_handles.get(random_result_tag).count_so_far()
+        
+        if prev_count == new_count:
+            return results
+
         for tag in self._result_tags:
-            results[tag] = res_handles.get(tag) \
-                            .fetch_all(flat_struct = True)[:max_result_len]
-                            #.fetch(slice(0, -(previous_N + 1)), flat_struct = True)[:max_result_len]
-        
+            new_results = res_handles.get(tag) \
+                                     .fetch(slice(prev_count, new_count), 
+                                            flat_struct = True) 
+            if prev_count - new_count == 1:
+                new_results = np.array([new_results])
+                # TODO correct this
+            if list(results[tag]):
+                results[tag] = np.append(results[tag], new_results, 
+                                         axis = 0)     
+            else:
+                results[tag] = new_results
+                  
+        self.saved_results = results
+
         if current_status == 'in execution':
-            print('Returning partial results of %d ' % max_result_len + \
+            print('Returning partial results of %d ' % new_count + \
                   'iterations (job not concluded).')
-        
+
         return results
 
 
