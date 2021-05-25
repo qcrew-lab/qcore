@@ -4,6 +4,7 @@ Measurement.
 from abc import abstractmethod
 import time
 import numpy as np
+from datetime import datetime
 
 from parameter import Parameter
 from utils.yamlizer import Yamlable
@@ -21,8 +22,10 @@ class Measurement(Yamlable):
         self._name = name
         self._quantum_machine = quantum_machine
         self._job = None
+        self._result_handles = None
         self._queued_job = None
         self.saved_results = {}
+        self._start_time = None
 
     @abstractmethod
     def _create_parameters(self):
@@ -86,6 +89,7 @@ class Measurement(Yamlable):
         
         print('Queueing new job.')
         self._queued_job = self._quantum_machine.queue.add(self._script())
+        self._start_time = datetime.now()
         # Waits for it to start excecution if queue is empty
         time.sleep(3)
         q_posit = self._queued_job.position_in_queue()
@@ -138,7 +142,22 @@ class Measurement(Yamlable):
             print('Job was not queued.')
             
         if current_status == 'in execution':
-            print('Job is in execution.')
+            has_reps = hasattr(self, '_reps')
+            res_handles = self._result_handles
+            
+            print('Job is in execution.')    
+            if has_reps:
+                total_reps = self._reps.value
+                random_result_tag = self._result_tags[0] 
+                count = res_handles.get(random_result_tag).count_so_far()
+                if count == 0:
+                    print('Not yet able to estimate time of conclusion.')
+                else:
+                    time_elapsed = datetime.now() - self._start_time
+                    pctg = count/total_reps
+                    time_remaining = (1-pctg)/pctg*time_elapsed
+                    print('   ETE: %s' % str(time_elapsed))
+                    print('   ETR: %s' % str(time_remaining))
             
         if current_status == 'concluded':
             print('Job has concluded.')
@@ -163,6 +182,7 @@ class Measurement(Yamlable):
         
         if q_posit == None:
             self._job = self._queued_job.wait_for_execution()
+            self._result_handles = self._job.result_handles
             try: 
                 # The is_paused() function is a poor workaround to know if the
                 # job has concluded, because QM documentation doesn't have any
@@ -173,23 +193,6 @@ class Measurement(Yamlable):
                 return 'concluded'
         if type(q_posit).__name__ == 'int':
             return 'queued'
-
-    def result_handles(self):
-        """
-        TODO
-        """
-        
-        current_status = self._current_status()
-        
-        if current_status == 'not queued':
-            print('Job was not queued.')
-            return
-        
-        if current_status == 'queued':
-            print('Job still in queue.')
-            return
-        
-        return self._job.result_handles
 
     def results(self):
         '''
@@ -206,7 +209,7 @@ class Measurement(Yamlable):
             print('Job was not queued.')
             return
         
-        res_handles = self.result_handles()
+        res_handles = self._result_handles
         
         if not res_handles:
             return
