@@ -1,6 +1,8 @@
 # import all objects defined in the __init__.py file in the 'imports' folder
 from qcrew.experiments.coax_test.imports import *
 
+reload(cfg), reload(stg)  # reloads modules before executing the code below
+
 # NOTE: make changes to lo, if, tof, mixer offsets in 'configuration.py'
 # NOTE: make changes to constant pulse amp and pulse duration in the qua script below
 
@@ -50,7 +52,7 @@ with program() as rr_spec:
 ############################           GET RESULTS         #############################
 ########################################################################################
 
-job = qm.execute(rr_spec)
+job = stg.qm.execute(rr_spec)
 result_handle = job.result_handles
 result_handle.wait_for_all_values()
 I_handle = result_handle.get("I_mem")

@@ -1,6 +1,8 @@
 # import all objects defined in the __init__.py file in the 'imports' folder
 from qcrew.experiments.coax_test.imports import *
 
+reload(cfg), reload(stg)  # reloads modules before executing the code below
+
 # NOTE: make changes to lo, if, tof, mixer offsets in 'configuration.py'
 # NOTE: make changes to constant pulse amp and pulse duration in the qua script below
 
@@ -47,7 +49,7 @@ with program() as power_rabi:
 ############################           GET RESULTS         #############################
 ########################################################################################
 
-job = qm.execute(power_rabi)
+job = stg.qm.execute(power_rabi)
 job_result = job.result_handles
 
 # please see "qm_get_results.py" in "analysis" package in "codebase" for an attempt

@@ -1,5 +1,6 @@
 # import all objects defined in the __init__.py file in the 'imports' folder
 from qcrew.experiments.coax_test.imports import *
+reload(cfg), reload(stg)  # reloads modules before executing the code below
 
 # NOTE: make changes to lo, if, tof, mixer offsets in 'configuration.py'
 # NOTE: make changes to constant pulse amp and pulse duration in the qua script below
@@ -18,7 +19,7 @@ sa = Sa124(name="sa", serial_number=19184645)
 
 # define quantum element whose signal will be analyzed. The quantum element is required
 # to have a CW operation defined.
-q_elem = rr
+q_elem = stg.rr
 q_elem_name = q_elem._name
 
 # define center frequency
@@ -38,7 +39,7 @@ with program() as cw:
 ########################################################################################
 ############################           GET RESULTS         #############################
 ########################################################################################
-job = qm.execute(cw)
+job = stg.qm.execute(cw)
 freqs, amps = sa.sweep(center=center, span=span, ref_power=ref_power)
 job.halt()
 sa.disconnect()

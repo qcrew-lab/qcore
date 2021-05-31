@@ -1,6 +1,6 @@
-# import all objects defined in the __init__.py file in the 'imports' folder
 from qcrew.experiments.coax_test.imports import *
-from qcrew.experiments.coax_test.imports.configuration import readout_pulse_len
+
+reload(cfg), reload(stg)  # reloads modules before executing the code below
 
 # NOTE: make changes to lo, if, tof, mixer offsets in 'configuration.py'
 # NOTE: make changes to constant pulse amp and pulse duration in the qua script below
@@ -33,7 +33,7 @@ with program() as tof_calib:
 ########################################################################################
 ############################           GET RESULTS         #############################
 ########################################################################################
-job = qm.execute(tof_calib)
+job = stg.qm.execute(tof_calib)
 result_handle = job.result_handles
 result_handle.wait_for_all_values()
 results = result_handle.get("adc_results").fetch_all()
@@ -41,7 +41,7 @@ results_fft = job.result_handles.get("adc_fft").fetch_all()
 
 # converting FFT results
 # readout_pulse_len is defined in configuration.py script.
-pulse_len = readout_pulse_len
+pulse_len = cfg.readout_pulse_len
 results_fft = np.sqrt(np.sum(np.squeeze(results_fft) ** 2, axis=1)) / pulse_len
 fft_freqs = np.arange(0, 0.5, 1 / pulse_len)[:] * SAMPLING_RATE
 fft_amps = results_fft[: int(np.ceil(pulse_len / 2))]
@@ -68,4 +68,4 @@ plt.savefig(imgpath)
 ########################################################################################
 ########################################################################################
 ########################################################################################
-#plt.show()  # this blocks execution, and is hence run at the end of the script
+# plt.show()  # this blocks execution, and is hence run at the end of the script
