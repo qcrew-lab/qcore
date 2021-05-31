@@ -6,13 +6,14 @@ from qcrew.experiments.coax_test.imports.configuration import readout_pulse_len
 # NOTE: make changes to constant pulse amp and pulse duration in the qua script below
 
 MEAS_NAME = "tof_calib"  # used for naming the saved data file
+
 SAMPLING_RATE = 1e9  # how many samples the OPX registers per second
 ADC_RESOLUTION = 2 ** 12  # used for converting ADC reading to analog voltage measured.
 ########################################################################################
 ########################           MEASUREMENT SEQUENCE         ########################
 ########################################################################################
 
-reps = 300
+reps = 3000
 wait_time = 500
 amp_scale = 1.5
 with program() as tof_calib:
@@ -67,4 +68,4 @@ plt.savefig(imgpath)
 ########################################################################################
 ########################################################################################
 ########################################################################################
-plt.show()  # this blocks execution, and is hence run at the end of the script
+#plt.show()  # this blocks execution, and is hence run at the end of the script
