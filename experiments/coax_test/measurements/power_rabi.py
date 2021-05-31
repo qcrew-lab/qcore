@@ -10,16 +10,18 @@ MEAS_NAME = "power_rabi"  # used for naming the saved data file
 ########################           MEASUREMENT SEQUENCE         ########################
 ########################################################################################
 
-reps = 10
-a_start = 0.0
-a_stop = None
-a_step = 0.01
+reps = 100
+a_start = -0.1
+a_stop = 0.1
+a_step = 0.005
 a_vec = np.arange(a_start, a_stop, a_step)
-wait_time = None
+a_vec_len = len(a_vec)
+wait_time = 1000  # int, in multiples of 4 ns
 
 with program() as power_rabi:
     n = declare(int)
     a = declare(fixed)
+    a_stream = declare_stream()
 
     I = declare(fixed)
     I_stream = declare_stream()
@@ -28,26 +30,25 @@ with program() as power_rabi:
 
     with for_(n, 0, n < reps, n + 1):
         with for_(a, a_start, a < a_stop, a + a_step):
-            play("gaussian" * amp(a), "qubit")
-            align("qubit", "rr")
+            play("gaussian" * amp(a), "qubit")  # TODO: remove hard-coded pulse
+            align("qubit", "rr")  # TODO: remove hard-coded element name
             measure("readout", "rr", None, ("integW1", I), ("integW2", Q))
             wait(wait_time, "rr")
             save(I, I_stream)
             save(Q, Q_stream)
+            save(a, a_stream)
 
     with stream_processing():
-        I_stream.buffer(len(a_vec)).save_all('I_mem')
-        Q_stream.buffer(len(a_vec)).save_all('Q_mem')
+        I_stream.buffer(a_vec_len).save_all("I_mem")
+        Q_stream.buffer(a_vec_len).save_all("Q_mem")
+        a_stream.buffer(a_vec_len).save_all("a_mem")
 
-# we are saving all data in qua loop
-# so, we need to do the averaging outside the loop
+########################################################################################
+############################           GET RESULTS         #############################
+########################################################################################
 
-# QM Results API
-# start a loop (while SOMETHING)
-# wait_for_values (say, 100 iterations)
-# fetch
-# average
-# save in results container (contains both raw and averaged results, later, this becomes datasaver)
-# send to plotter
+job = qm.execute(power_rabi)
+job_result = job.result_handles
 
-# now, we save both raw and average
+# please see "qm_get_results.py" in "analysis" package in "codebase" for an attempt
+# to get partial results from QM
