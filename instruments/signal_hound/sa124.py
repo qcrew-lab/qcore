@@ -10,14 +10,30 @@ and frequency on the horizontal axis.
 # --------------------------------- Imports ------------------------------------
 import numpy as np
 
-from instruments.instrument import PhysicalInstrument
-from instruments.signal_hound.sa_api import (
-    SA_AVERAGE, SA_FALSE, SA_IDLE, SA_LOG_SCALE, SA_LOG_UNITS,
-    SA_RBW_SHAPE_FLATTOP, SA_REF_EXTERNAL_IN, SA_SWEEPING, SA_TRUE,
-    sa_close_device, sa_config_acquisition, sa_config_center_span,
-    sa_config_level, sa_config_proc_units, sa_config_RBW_shape,
-    sa_config_sweep_coupling, sa_get_sweep_64f, sa_initiate,
-    sa_open_device_by_serial, sa_query_sweep_info, sa_set_timebase)
+from qcrew.codebase.instruments.instrument import PhysicalInstrument
+from qcrew.codebase.instruments.signal_hound.sa_api import (
+    SA_AVERAGE,
+    SA_FALSE,
+    SA_IDLE,
+    SA_LOG_SCALE,
+    SA_LOG_UNITS,
+    SA_RBW_SHAPE_FLATTOP,
+    SA_REF_EXTERNAL_IN,
+    SA_SWEEPING,
+    SA_TRUE,
+    sa_close_device,
+    sa_config_acquisition,
+    sa_config_center_span,
+    sa_config_level,
+    sa_config_proc_units,
+    sa_config_RBW_shape,
+    sa_config_sweep_coupling,
+    sa_get_sweep_64f,
+    sa_initiate,
+    sa_open_device_by_serial,
+    sa_query_sweep_info,
+    sa_set_timebase,
+)
 
 # ----------------------------------- Globals ----------------------------------
 # dict containing serial numbers and device handles of connected SAs
@@ -54,49 +70,56 @@ VID_PROCESSING_UNITS = SA_LOG_UNITS
 DOES_IMAGE_REJECT = SA_TRUE
 
 # ----------------------- Constructor argument names ---------------------------
-NAME = 'name' # gettable
-SERIAL_NUMBER = 'serial_number' # gettable
+NAME = "name"  # gettable
+SERIAL_NUMBER = "serial_number"  # gettable
 
 # frequency sweep center in Hz
-CENTER = 'center' # gettable and settable
+CENTER = "center"  # gettable and settable
 DEFAULT_CENTER = 8e9
-MAX_CENTER = 13e9 # set by vendor in sa_api.h
-MIN_CENTER = 100e3 # set by vendor in sa_api.h
+MAX_CENTER = 13e9  # set by vendor in sa_api.h
+MIN_CENTER = 100e3  # set by vendor in sa_api.h
 
 # frequency sweep span in Hz
-SPAN = 'span' # gettable and settable
+SPAN = "span"  # gettable and settable
 DEFAULT_SPAN = 2e9
-MIN_SPAN = 1.0 # set by vendor in sa_api.h
+MIN_SPAN = 1.0  # set by vendor in sa_api.h
 
 # resolution bandwidth in Hz. Available values are [0.1Hz-100kHz], 250kHz, 6MHz.
 # see _is_valid_rbw() for exceptions to available values.
 # definition: amplitude value for each frequency bin represents total energy
 # from rbw / 2 below and above the bin's center.
-RBW = 'rbw' # gettable and settable
+RBW = "rbw"  # gettable and settable
 DEFAULT_RBW = 250e3
 
 # reference power level of device in dBm.
 # set it at or slightly about your expected input power for best sensitivity.
-REF_POWER = 'ref_power' # gettable and settable
+REF_POWER = "ref_power"  # gettable and settable
 DEFAULT_REF_POWER = 0
-MAX_REF_POWER = 20 # in dBm, set by vendor in sa_api.h
+MAX_REF_POWER = 20  # in dBm, set by vendor in sa_api.h
 
 # ---------------------------------- Class -------------------------------------
 class Sa124(PhysicalInstrument):
     """
     SA124. TODO - WRITE CLASS DOCU
     """
+
     # pylint: disable=too-many-arguments
     # this is a physical instrument and requires all these arguments for proper
     # initialisation in frequency sweep mode.
-    def __init__(self, name: str, serial_number: int,
-                 center: float=DEFAULT_CENTER, span: float=DEFAULT_SPAN,
-                 rbw: float=DEFAULT_RBW, ref_power: float=DEFAULT_REF_POWER):
+    def __init__(
+        self,
+        name: str,
+        serial_number: int,
+        center: float = DEFAULT_CENTER,
+        span: float = DEFAULT_SPAN,
+        rbw: float = DEFAULT_RBW,
+        ref_power: float = DEFAULT_REF_POWER,
+    ):
         # TODO use try catch block in case device not authenticated
-        print('Trying to initialize ' + name + ', will take about 5s...')
+        print("Trying to initialize " + name + ", will take about 5s...")
         self._device_handle = self._connect(serial_number)
         super().__init__(name=name, uid=serial_number)
-        print('Connnected to SA124B ' + str(self._uid))
+        print("Connnected to SA124B " + str(self._uid))
 
         self._center = center
         self._span = span
@@ -105,24 +128,25 @@ class Sa124(PhysicalInstrument):
         self._initialize()
 
     def _create_yaml_map(self):
-        yaml_map = {NAME: self._name,
-                    SERIAL_NUMBER: self._uid,
-                    CENTER: self._center,
-                    SPAN: self._span,
-                    RBW: self._rbw,
-                    REF_POWER: self._ref_power
-                    }
+        yaml_map = {
+            NAME: self._name,
+            SERIAL_NUMBER: self._uid,
+            CENTER: self._center,
+            SPAN: self._span,
+            RBW: self._rbw,
+            REF_POWER: self._ref_power,
+        }
         return yaml_map
 
     def _connect(self, uid: int):
         try:
-            device_handle = sa_open_device_by_serial(uid)['handle']
+            device_handle = sa_open_device_by_serial(uid)["handle"]
             ACTIVE_SA_CONNECTIONS[uid] = device_handle
             return device_handle
         except RuntimeError as runtime_error:
             if uid in ACTIVE_SA_CONNECTIONS:
-                print('You are trying to open an already open SA')
-                print('PLEASE DO NOT DO THIS AGAIN WTF')
+                print("You are trying to open an already open SA")
+                print("PLEASE DO NOT DO THIS AGAIN WTF")
                 device_handle = ACTIVE_SA_CONNECTIONS[uid]
                 return device_handle
             else:
@@ -141,25 +165,33 @@ class Sa124(PhysicalInstrument):
 
         # sweep parameters are set to user defined values, if given
         # else set to default values
-        self._configure_sweep(center=self._center, span=self._span,
-                             rbw=self._rbw, ref_power=self._ref_power)
+        self._configure_sweep(
+            center=self._center,
+            span=self._span,
+            rbw=self._rbw,
+            ref_power=self._ref_power,
+        )
 
     def _is_valid_rbw(self, rbw: float):
         # TODO remove hard coding, do proper logging and error handling, DRY
         start_freq = self._center - (self._span / 2)
 
         # these two conditions are obtained from the manual
-        if ((self._span >= 100e6 or (self._span > 200e3 and start_freq < 16e6))
-            and rbw < 6.5e3):
+        if (
+            self._span >= 100e6 or (self._span > 200e3 and start_freq < 16e6)
+        ) and rbw < 6.5e3:
             is_valid_rbw = False
-        elif ((0.1 <= rbw <= 100e3) or (rbw == 250e3) or
-              (rbw == 6e6 and start_freq >= 200e6 and self._span >= 200e6)):
+        elif (
+            (0.1 <= rbw <= 100e3)
+            or (rbw == 250e3)
+            or (rbw == 6e6 and start_freq >= 200e6 and self._span >= 200e6)
+        ):
             is_valid_rbw = True
         else:
             is_valid_rbw = False
 
         if not is_valid_rbw:
-            print('Bad RBW value given, rbw set to default ' + str(DEFAULT_RBW))
+            print("Bad RBW value given, rbw set to default " + str(DEFAULT_RBW))
 
         return is_valid_rbw
 
@@ -168,38 +200,43 @@ class Sa124(PhysicalInstrument):
         # the third argument is an inconsequential flag that can be ignored
         sa_initiate(self._device_handle, SA_IDLE, SA_FALSE)
 
-        if 'center' in sweep_parameters:
-            new_center = sweep_parameters['center']
+        if "center" in sweep_parameters:
+            new_center = sweep_parameters["center"]
             if MIN_CENTER <= new_center <= MAX_CENTER:
                 self._center = new_center
             else:
-                raise ValueError('Center out of bounds, must be between '
-                                 + str(MIN_CENTER) + '-' + str(MAX_CENTER))
+                raise ValueError(
+                    "Center out of bounds, must be between "
+                    + str(MIN_CENTER)
+                    + "-"
+                    + str(MAX_CENTER)
+                )
 
-        if 'span' in sweep_parameters:
-            new_span = sweep_parameters['span']
+        if "span" in sweep_parameters:
+            new_span = sweep_parameters["span"]
             if new_span < MIN_SPAN:
-                raise ValueError('Span out of bounds, must be greater than '
-                                 + str(MIN_SPAN))
+                raise ValueError(
+                    "Span out of bounds, must be greater than " + str(MIN_SPAN)
+                )
             else:
                 self._span = new_span
 
         sa_config_center_span(self._device_handle, self._center, self._span)
 
-        if 'rbw' in sweep_parameters:
-            new_rbw = sweep_parameters['rbw']
+        if "rbw" in sweep_parameters:
+            new_rbw = sweep_parameters["rbw"]
             if self._is_valid_rbw(new_rbw):
                 self._rbw = new_rbw
             else:
                 self._rbw = DEFAULT_RBW
-            sa_config_sweep_coupling(self._device_handle, self._rbw,
-                                         self._rbw, DOES_IMAGE_REJECT)
+            sa_config_sweep_coupling(
+                self._device_handle, self._rbw, self._rbw, DOES_IMAGE_REJECT
+            )
 
-        if 'ref_power' in sweep_parameters:
-            new_ref_power = sweep_parameters['ref_power']
+        if "ref_power" in sweep_parameters:
+            new_ref_power = sweep_parameters["ref_power"]
             if new_ref_power > MAX_REF_POWER:
-                print('Ref power out of bounds, clamping to '
-                      + str(MAX_REF_POWER))
+                print("Ref power out of bounds, clamping to " + str(MAX_REF_POWER))
                 self._ref_power = MAX_REF_POWER
             else:
                 self._ref_power = new_ref_power
@@ -208,34 +245,36 @@ class Sa124(PhysicalInstrument):
         # device is ready to sweep
         sa_initiate(self._device_handle, SA_SWEEPING, SA_FALSE)
 
-        print('Configured sweep! Sweep info: ')
-        print(self.parameters)
+        #print("Configured sweep! Sweep info: ")
+        #print(self.parameters)
 
     def sweep(self, **sweep_parameters):
         if sweep_parameters:
             self._configure_sweep(**sweep_parameters)
 
         sweep_info = sa_query_sweep_info(self._device_handle)
-        frequencies = [sweep_info['start_freq'] + i * sweep_info['bin_size']
-                                for i in range(sweep_info['sweep_length'])]
-        amplitudes = sa_get_sweep_64f(self._device_handle)['max']
+        frequencies = [
+            sweep_info["start_freq"] + i * sweep_info["bin_size"]
+            for i in range(sweep_info["sweep_length"])
+        ]
+        amplitudes = sa_get_sweep_64f(self._device_handle)["max"]
         return (np.array(frequencies), np.array(amplitudes))
 
     def disconnect(self):
         sa_close_device(self._device_handle)
         del ACTIVE_SA_CONNECTIONS[self._uid]
-        print(self._name + ' disconnected!')
+        #print(self._name + " disconnected!")
 
-    @property # sweep parameters getter
+    @property  # sweep parameters getter
     def parameters(self):
         sweep_info = sa_query_sweep_info(self._device_handle)
-        sweep_info.pop('status')
+        sweep_info.pop("status")
         return {
-            'start': '{:.7E}'.format(sweep_info['start_freq']),
-            CENTER: '{:.7E}'.format(self._center),
-            SPAN: '{:.3E}'.format(self._span),
-            'sweep_length': sweep_info['sweep_length'],
-            RBW: '{:.3E}'.format(self._rbw),
+            "start": "{:.7E}".format(sweep_info["start_freq"]),
+            CENTER: "{:.7E}".format(self._center),
+            SPAN: "{:.3E}".format(self._span),
+            "sweep_length": sweep_info["sweep_length"],
+            RBW: "{:.3E}".format(self._rbw),
             REF_POWER: self._ref_power,
-            'bin_size': '{:.3E}'.format(sweep_info['bin_size'])
+            "bin_size": "{:.3E}".format(sweep_info["bin_size"]),
         }

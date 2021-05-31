@@ -93,13 +93,9 @@ class ResonatorSpectroscopy(Measurement):
                 with for_each_((qu_a, rr_a, rr_f), 
                                (qu_a_vec, rr_a_vec, rr_f_vec)):
                     update_frequency("rr", rr_f)
-                    if play_qubit_pulse:
-                        play(self._qubit_pulse.value * amp(qu_a),
-                                'qubit')
-                    align('qubit', 'rr')
-                    measure("long_readout" * amp(rr_a), "rr", None, 
-                            demod.full('long_integW1', I), 
-                            demod.full('long_integW2', Q))
+                    measure("readout" * amp(rr_a), "rr", None, 
+                            demod.full('integW1', I), 
+                            demod.full('integW2', Q))
                     wait(self._wait_time.value, "rr")
                     save(I, I_st)
                     save(Q, Q_st) 

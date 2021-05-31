@@ -2,13 +2,14 @@
 This module defines base classes for encapsulating cqed components in qcrew's
 lab.
 """
-from instruments import MetaInstrument
-from utils.pulselib import Pulse
+from qcrew.codebase.instruments import MetaInstrument
+from qcrew.codebase.utils.pulselib import Pulse
 
 # constructor argument names
-NAME = 'name'
-PARAMETERS = 'parameters'
-OPERATIONS = 'operations'
+NAME = "name"
+PARAMETERS = "parameters"
+OPERATIONS = "operations"
+
 
 class QuantumElement(MetaInstrument):
     """
@@ -22,7 +23,8 @@ class QuantumElement(MetaInstrument):
     builder relies on quantum elements having suitable attributes, if they
     don't, it throws up attribute errors.
     """
-    @property # parameters getter
+
+    @property  # parameters getter
     def parameters(self):
         # must return up-to-date values of parameters
         for param_name in self._parameters:
@@ -38,7 +40,7 @@ class QuantumElement(MetaInstrument):
             value ([type]): param value to be added
         """
         if name in self._parameters:
-            print('param of this name alr exists in element...')
+            print("param of this name alr exists in element...")
             return
 
         self._parameters[name] = value
@@ -58,7 +60,7 @@ class QuantumElement(MetaInstrument):
         # TODO enforce that operations must be a dict
         if hasattr(self, OPERATIONS):
             if name in getattr(self, OPERATIONS):
-                print('Operation with given name alr exists in this element...')
+                print("Operation with given name alr exists in this element...")
             else:
                 getattr(self, OPERATIONS)[name] = pulse
         else:
@@ -74,13 +76,13 @@ class QuantumElement(MetaInstrument):
         """
         # TODO validate new_op_length against QM specs
         if not hasattr(self, OPERATIONS):
-            print('No operations defined for this element')
+            print("No operations defined for this element")
             return
 
         try:
             getattr(self, OPERATIONS)[op_name].length = length
         except KeyError:
-            print('No such operation defined for this element')
+            print("No such operation defined for this element")
 
     # TODO figure out a better way to handle this update
     def set_op_params(self, op_name: str, wf_name: str, params: dict):
@@ -92,11 +94,11 @@ class QuantumElement(MetaInstrument):
             params (dict): new param dict to update waveform with
         """
         if not isinstance(params, dict):
-            print('params must have the form { ''param_name'': param_value }')
+            print("params must have the form { " "param_name" ": param_value }")
             return
 
         if not hasattr(self, OPERATIONS):
-            print('No operations defined for this element')
+            print("No operations defined for this element")
             return
 
         try:
@@ -104,14 +106,14 @@ class QuantumElement(MetaInstrument):
             pulse.waveforms[wf_name].func_params = params
         except KeyError:
             # TODO remove this hard coded comparison check
-            if wf_name != 'I' or wf_name != 'Q':
-                print('wf_name must be either ''I'' or ''Q''')
+            if wf_name != "I" or wf_name != "Q":
+                print("wf_name must be either " "I" " or " "Q" "")
             else:
-                print('No such operation defined for this element')
+                print("No such operation defined for this element")
 
     def _create_yaml_map(self):
         yaml_map = dict()
-        yaml_map['name'] = self._name
+        yaml_map["name"] = self._name
         # call parameters getter for latest values
         yaml_map.update(self.parameters)
         return yaml_map
@@ -122,23 +124,24 @@ class QuantumDevice(MetaInstrument):
     Encapsulates a quantum device, which contains multiple quantum elements
     performing specific functions.
     """
+
     def __init__(self, name: str, **elements):
         self._elements = dict()
         # check that kwargs are indeed QuantumElement objects
         for element in elements.values():
             if not isinstance(element, QuantumElement):
-                raise ValueError('Value of kwargs must be QuantumElement type')
+                raise ValueError("Value of kwargs must be QuantumElement type")
             self._elements[element.name] = element
         super().__init__(name=name, **elements)
 
-    @property # parameters getter
+    @property  # parameters getter
     def parameters(self):
         parameters = dict()
         for element in self._elements.values():
             parameters[element.name] = element.parameters
         return parameters
 
-    @property # elements getter
+    @property  # elements getter
     def elements(self) -> set:
         """
         Get the dict of elements part of this quantum device.
@@ -147,6 +150,6 @@ class QuantumDevice(MetaInstrument):
 
     def _create_yaml_map(self):
         yaml_map = dict()
-        yaml_map['name'] = self._name
+        yaml_map["name"] = self._name
         yaml_map.update(self._elements)
         return yaml_map

@@ -3,7 +3,8 @@ This module defines base classes for encapsulating instruments in qcrew's lab.
 """
 from abc import abstractmethod
 
-from utils.yamlizer import Yamlable
+from qcrew.codebase.utils.yamlizer import Yamlable
+
 
 class Instrument(Yamlable):
     """
@@ -22,19 +23,21 @@ class Instrument(Yamlable):
     instrument, and provide a current snapshot of the instrument. Subclasses
     decide which information to provide and how to populate its parameters dict.
     """
+
     def __init__(self, name: str):
         """
         Args:
             name (str): name of this instrument.
         """
-        super().__init__(name = name)
+        super().__init__(name=name)
 
-    @property # parameters info getter
+    @property  # parameters info getter
     @abstractmethod
     def parameters(self):
         """
         Get the parameter dict of this instrument.
         """
+
 
 class PhysicalInstrument(Instrument):
     """
@@ -52,6 +55,7 @@ class PhysicalInstrument(Instrument):
     may be a serial number, or a machine id, or any other unique id specified
     by the instrument vendor.
     """
+
     def __init__(self, name: str, uid):
         """
         Args:
@@ -81,6 +85,7 @@ class PhysicalInstrument(Instrument):
         Disconnect this instrument.
         """
 
+
 # pylint: disable=abstract-method
 # although MetaInstrument implements _create_yaml_map(), each subclass still
 # has to decide how to implement its parameters() property.
@@ -105,6 +110,7 @@ class MetaInstrument(Instrument):
     class in their __init__() method. They still have the responsibility of
     creating attributes for any new parameter added.
     """
+
     def __init__(self, name: str, **parameters):
         """
         Args:
@@ -112,8 +118,8 @@ class MetaInstrument(Instrument):
         """
         # TODO proper handling. 'name' is a reserved key for instrument name
         super().__init__(name=name)
-        if 'name' in parameters:
-            raise ValueError('Cannot have parameter named str(name)')
+        if "name" in parameters:
+            raise ValueError("Cannot have parameter named str(name)")
         self._parameters = dict()
         if parameters:
             self._create_attributes(parameters)
@@ -125,6 +131,6 @@ class MetaInstrument(Instrument):
         files.
         """
         for param_name in parameters:
-                param_value = parameters[param_name]
-                setattr(self, param_name, param_value)
-                self._parameters[param_name] = param_value
+            param_value = parameters[param_name]
+            setattr(self, param_name, param_value)
+            self._parameters[param_name] = param_value

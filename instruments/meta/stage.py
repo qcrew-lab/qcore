@@ -9,7 +9,7 @@ duplicate instances can be added to stage.
 from pathlib import Path
 import yaml
 
-from instruments import Instrument, MetaInstrument, PhysicalInstrument
+from codebase.instruments import Instrument, MetaInstrument, PhysicalInstrument
 
 DEFAULT_STAGE_NAME = 'stage'
 
