@@ -3,19 +3,16 @@ import numpy as np
 
 from qm.qua import *
 
-from qcrew.experiments.coax_test.imports.stage import (
-    STAGE_NAME,
-    qubit,
-    lb_qubit,
-    rr,
-    lb_rr,
-    qmm,
-    qm,
-)
+from importlib import reload
+from qcrew.experiments.coax_test.imports import configuration as cfg
+from qcrew.experiments.coax_test.imports import stage as stg
 
 from datetime import datetime, date
 from pathlib import Path
 
+STAGE_NAME = "coax_test"  # this is used to save experimental data to the correct folder
 DAILY_SUBFOLDER = str(date.today())
 DATA_FOLDER_PATH = Path().resolve() / "data" / STAGE_NAME / DAILY_SUBFOLDER
 DATA_FOLDER_PATH.mkdir(parents=True, exist_ok=True)
+
+test_var = 5
