@@ -12,8 +12,8 @@ ADC_RESOLUTION = 2 ** 12  # used for converting ADC reading to analog voltage me
 ########################           MEASUREMENT SEQUENCE         ########################
 ########################################################################################
 
-reps = 30000
-wait_time = 5000
+reps = 300
+wait_time = 500
 amp_scale = 1.5
 with program() as tof_calib:
     adc_stream = declare_stream(adc_trace=True)
