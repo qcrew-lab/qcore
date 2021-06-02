@@ -13,7 +13,6 @@ from qm.qua import *
 
 # ---------------------------------- Class -------------------------------------
 
-
 class ResonatorSpectroscopy(Measurement):
     """
     TODO - WRITE CLASS DOCU
@@ -76,7 +75,6 @@ class ResonatorSpectroscopy(Measurement):
         qu_a_vec_py = parameter_list[0]
         rr_a_vec_py = parameter_list[1]
         rr_f_vec_py = [int(x) for x in parameter_list[2]]
-
         # Defines buffer size for averaging
         qu_a_buf = len(self._qubit_ascale.value)
         rr_a_buf = len(self._rr_ascale.value)
@@ -90,7 +88,6 @@ class ResonatorSpectroscopy(Measurement):
             qu_a = declare(fixed)
             rr_a = declare(fixed)
             rr_f = declare(int)
-
             # Arrays for sweeping
             qu_a_vec = declare(fixed, value=qu_a_vec_py)
             rr_a_vec = declare(fixed, value=rr_a_vec_py)
