@@ -13,14 +13,14 @@ MEAS_NAME = "qubit_spec"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 10000
+reps = 100
 wait_time = 8000  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-f_start = -100e6
-f_stop = 100e6
-f_step = 0.01e6
+f_start = 0e6
+f_stop = 10e6
+f_step = 1e6
 qubit_f_list = np.arange(f_start, f_stop, f_step)
 qubit_ascale = 1.0
 qubit_op = "saturation"  # qubit operation as defined in config
