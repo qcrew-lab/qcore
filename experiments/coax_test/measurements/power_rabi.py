@@ -22,17 +22,17 @@ a_start = -1
 a_stop = 1
 a_step = 0.01
 qubit_a_list = np.arange(a_start, a_stop, a_step)
-qubit_f = qubit.parameters["int_freq"]
+qubit_f = qubit.int_freq
 qubit_op = "gaussian"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
-rr_f = rr.parameters["int_freq"]
+rr_f = rr.int_freq
 rr_ascale = 1.0
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
-# NOTE: The weights must be defined for the chosen measurement operation
+# NOTE: The weights must be defined in configuration.py for the chosen msmt operation
 
 
 with program() as power_rabi:

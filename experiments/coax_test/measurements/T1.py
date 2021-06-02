@@ -18,12 +18,12 @@ wait_time = 8000  # in clock cycles
 
 # Measurement pulse
 rr = stg.rr
-rr_f = rr_f = rr.parameters["int_freq"]
+rr_f = rr.int_freq
 rr_ascale = 1.0
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
-# NOTE: The weights must be defined for the chosen measurement operation
+# NOTE: The weights must be defined in configuration.py for the chosen msmt operation
 
 # Wait time between two pulses in clock cycles
 t_start = 0
@@ -34,7 +34,7 @@ t_list = np.arange(t_start, t_stop, t_step)
 # Qubit pulse
 qubit = stg.qubit
 qubit_ascale = 1.0
-qubit_f = qubit.parameters["int_freq"]  # IF frequency of qubit pulse
+qubit_f = qubit.int_freq  # IF of qubit pulse
 qubit_op = "gaussian"  # qubit operation as defined in config
 
 with program() as t1:

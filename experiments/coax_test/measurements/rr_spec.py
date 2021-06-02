@@ -26,7 +26,7 @@ rr_ascale = 0.4
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
-# NOTE: The weights must be defined for the chosen measurement operation
+# NOTE: The weights must be defined in configuration.py for the chosen msmt operation
 
 with program() as rr_spec:
     n = declare(int)

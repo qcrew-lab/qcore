@@ -53,8 +53,7 @@ rr_mixer_offsets = {
 ########################################################################################
 ##############################            PULSES          ##############################
 ########################################################################################
-# NOTE: consider changing pulse parameters 'on-the-fly' within a qua script (there will
-# be in clock cycles)
+# NOTE: consider changing pulse parameters 'on-the-fly' within a qua script (will be in clock cycles)
 # NOTE: read http://qm-docs.s3.amazonaws.com/v0.90/python/qua/dsl_main.html to know how
 
 cw_pulse_len = 1000  # must be an integer multiple of 4 >= 16

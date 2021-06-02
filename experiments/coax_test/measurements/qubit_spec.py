@@ -27,12 +27,12 @@ qubit_op = "saturation"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
-rr_f = rr.parameters["int_freq"]
+rr_f = rr.int_freq
 rr_ascale = 1.0
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
-# NOTE: The weights must be defined for the chosen measurement operation
+# NOTE: The weights must be defined in configuration.py for the chosen msmt operation
 
 with program() as qubit_spec:
     # Iteration variable

@@ -19,7 +19,7 @@ wait_time = 8000  # in clock cycles
 
 # Measurement pulse
 rr = stg.rr
-rr_f = rr.parameters["int_freq"]
+rr_f = rr.int_freq
 rr_ascale = 1.0
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
