@@ -13,14 +13,14 @@ MEAS_NAME = "rr_spec"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 10000
+reps = 4
 wait_time = 8000  # in clock cycles
 
 # Measurement pulse
 rr = stg.rr
-f_start = -46e6
-f_stop = -45e6
-f_step = 0.02e6
+f_start = -47e6
+f_stop = -43e6
+f_step = 1e6
 rr_f_list = np.arange(f_start, f_stop, f_step)
 rr_ascale = 0.4
 rr_op = "readout"
@@ -30,7 +30,9 @@ integW2 = "integW2"  # integration weight for Q
 
 with program() as rr_spec:
     n = declare(int)
+
     rr_f = declare(int)
+    f_st = declare_stream()
 
     I = declare(fixed)
     Q = declare(fixed)
@@ -55,10 +57,12 @@ with program() as rr_spec:
             save(Q, Q_st_avg)
             save(I, I_st)
             save(Q, Q_st)
+            save(rr_f, f_st)
 
     with stream_processing():
         I_st_avg.buffer(len(rr_f_list)).average().save_all("I_avg")
         Q_st_avg.buffer(len(rr_f_list)).average().save_all("Q_avg")
+        f_st.buffer(len(rr_f_list)).average().save_all("f")
         I_st.buffer(len(rr_f_list)).save_all("I")
         Q_st.buffer(len(rr_f_list)).save_all("Q")
 
@@ -73,7 +77,7 @@ ax = fig.add_subplot(1, 1, 1)
 hdisplay = display.display("", display_id=True)
 raw_data = {}
 result_handles = job.result_handles
-N = 100  # Maximum size of data batch for each refresh
+N = 2 # max size of data batch for each refresh, must be integer > 1
 remaining_data = reps
 while remaining_data != 0:
     # clear data
@@ -81,14 +85,16 @@ while remaining_data != 0:
 
     # update data
     N = min(N, remaining_data)  # don't wait for more than there's left
-    raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg"])
+    raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg", "f"])
     I_avg = np.average(raw_data["I_avg"], axis=0)
     Q_avg = np.average(raw_data["Q_avg"], axis=0)
     amps = np.abs(I_avg + 1j * Q_avg)
+
+    rr_f = np.average(raw_data["f"], axis=0)  # just to make sure the I and Q measured is for the rr_f stored on the OPX
     remaining_data -= N
 
     # plot averaged data
-    ax.plot(rr_f_list, amps)
+    ax.plot(rr_f, amps)
 
     # plot fitted curve
     params = plot_fit(rr_f_list, amps, ax, fit_func="lorentzian")
@@ -101,9 +107,7 @@ while remaining_data != 0:
 ############################           SAVE RESULTS         ############################
 ########################################################################################
 
-metadata = (
-    f"{reps = }, {f_start = }, {f_stop = }, {f_step = }, {wait_time = }, {rr_ascale = }"
-)
+metadata = f"{reps = }, {f_start = }, {f_stop = }, {f_step = }, {wait_time = }, {rr_ascale = }\n"
 filename = f"{datetime.now().strftime('%H-%M-%S')}_{MEAS_NAME}"
 datapath = DATA_FOLDER_PATH / (filename + ".csv")
 imgpath = DATA_FOLDER_PATH / (filename + ".png")
