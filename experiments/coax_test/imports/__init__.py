@@ -1,11 +1,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from IPython import display
 
 from qm.qua import *
 
 from importlib import reload
 from qcrew.experiments.coax_test.imports import configuration as cfg
 from qcrew.experiments.coax_test.imports import stage as stg
+from qcrew.codebase.analysis.plot import plot_fit
+from qcrew.codebase.analysis.qm_get_results_new import update_results
 
 from datetime import datetime, date
 from pathlib import Path

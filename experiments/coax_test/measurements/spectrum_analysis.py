@@ -1,5 +1,6 @@
 # import all objects defined in the __init__.py file in the 'imports' folder
 from qcrew.experiments.coax_test.imports import *
+
 reload(cfg), reload(stg)  # reloads modules before executing the code below
 
 # NOTE: make changes to lo, if, tof, mixer offsets in 'configuration.py'
@@ -17,28 +18,26 @@ MEAS_NAME = "spectrum_analysis"  # used for naming the saved data file
 # initialize the SA
 sa = Sa124(name="sa", serial_number=19184645)
 
-# define quantum element whose signal will be analyzed. The quantum element is required
-# to have a CW operation defined.
+# Define quantum element whose signal will be analyzed and pulse characteristics
+# The quantum element is required to have a CW operation defined.
 q_elem = stg.rr
 q_elem_name = q_elem._name
-
-# define center frequency
-center = q_elem.parameters["lo_freq"]
-
-# define frequency span in hertz
-span = abs(3 * q_elem.parameters["int_freq"])
-
-# define reference power in dBm
-ref_power = 0
+q_elem_IF = q_elem.parameters["int_freq"]  # Use this to change IF without changing config
+cw_operation = "CW"  # name of the CW operation as defined in the config file
+center = q_elem.parameters["lo_freq"]  # center frequency
+span = abs(3 * q_elem_IF)  # frequency span in hertz
+ref_power = 0  # reference power in dBm
 
 # QUA script
 with program() as cw:
+    update_frequency(q_elem_name, q_elem_IF)
     with infinite_loop_():
-        play("CW", q_elem_name)
+        play(cw_operation, q_elem_name)
 
 ########################################################################################
 ############################           GET RESULTS         #############################
 ########################################################################################
+
 job = stg.qm.execute(cw)
 freqs, amps = sa.sweep(center=center, span=span, ref_power=ref_power)
 job.halt()

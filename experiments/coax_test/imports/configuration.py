@@ -32,9 +32,9 @@ qubit_LO = 5e9
 qubit_IF = -50e6
 
 rr_LO = 8.5993e9
-rr_IF = -50e6
+rr_IF = -45.3e6
 
-rr_time_of_flight = 24  # must be integer multiple of 4 >= 180
+rr_time_of_flight = 224  # must be integer multiple of 4 >= 180
 
 # NOTE: please copy paste results of mixer tuning in the respective dicts below
 qubit_mixer_offsets = {
@@ -62,6 +62,9 @@ cw_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
 
 readout_pulse_len = 1000  # must be an integer multiple of 4 >= 16
 readout_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
+
+saturation_pulse_len = 15000  # must be an integer multiple of 4 >= 16
+saturation_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
 
 gaussian_pulse_wf_I_samples = gaussian_fn(0.25, 150, 6)  # (amp, sigma, multiple_sigma)
 gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
@@ -107,6 +110,7 @@ config = {
             "operations": {
                 "CW": "CW",
                 "gaussian": "gaussian_pulse",
+                "saturation": "saturation_pulse",
             },
         },
         "rr": {
@@ -133,6 +137,11 @@ config = {
             "length": cw_pulse_len,
             "waveforms": {"I": "const_wf", "Q": "zero_wf"},
         },
+        "saturation_pulse": {
+            "operation": "control",
+            "length": saturation_pulse_len,
+            "waveforms": {"I": "saturation_wf", "Q": "zero_wf"},
+        },
         "gaussian_pulse": {
             "operation": "control",
             "length": gaussian_pulse_len,
@@ -150,6 +159,10 @@ config = {
         },
     },
     "waveforms": {
+        "saturation_wf": {
+            "type": "constant",
+            "sample": saturation_pulse_amp,
+        },
         "const_wf": {
             "type": "constant",
             "sample": cw_pulse_amp,

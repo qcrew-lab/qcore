@@ -13,18 +13,28 @@ ADC_RESOLUTION = 2 ** 12  # used for converting ADC reading to analog voltage me
 ########################           MEASUREMENT SEQUENCE         ########################
 ########################################################################################
 
-reps = 3000
-wait_time = 500
-amp_scale = 1.5
+# Loop parameters
+reps = 20000
+wait_time = 8000  # in clock cycles
+
+# Measurement pulse
+rr = stg.rr
+rr_f = rr.parameters["int_freq"]
+rr_ascale = 1.0
+rr_op = "readout"
+integW1 = "integW1"  # integration weight for I
+integW2 = "integW2"  # integration weight for Q
+# NOTE: The weights must be defined for the chosen measurement operation
+
 with program() as tof_calib:
     adc_stream = declare_stream(adc_trace=True)
     n = declare(int)
 
     with for_(n, 0, n < reps, n + 1):
-        reset_phase("rr")
-        align("rr")
-        measure("readout" * amp(amp_scale), "rr", adc_stream)
-        wait(wait_time, "rr")
+        reset_phase(rr.name)
+        align(rr.name)
+        measure(rr_op * amp(rr_ascale), rr.name, adc_stream)
+        wait(wait_time, rr.name)
 
     with stream_processing():
         adc_stream.input1().average().save("adc_results")
@@ -55,7 +65,7 @@ ax2.plot(fft_freqs[5:] / 1e6, fft_amps[5:])
 ############################           SAVE RESULTS         ############################
 ########################################################################################
 
-metadata = f"{reps = }, {wait_time = }, {amp_scale = }"
+metadata = f"{reps = }, {wait_time = }, {rr_ascale = }, {rr_f = }"
 filename = f"{datetime.now().strftime('%H-%M-%S')}_{MEAS_NAME}"
 datapath = DATA_FOLDER_PATH / (filename + ".csv")
 imgpath = DATA_FOLDER_PATH / (filename + ".png")
@@ -68,4 +78,4 @@ plt.savefig(imgpath)
 ########################################################################################
 ########################################################################################
 ########################################################################################
-# plt.show()  # this blocks execution, and is hence run at the end of the script
+plt.show()  # this blocks execution, and is hence run at the end of the script

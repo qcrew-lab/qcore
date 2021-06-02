@@ -1,20 +1,22 @@
 # import all objects defined in the __init__.py file in the 'imports' folder
 from qcrew.experiments.coax_test.imports import *
 
+reload(cfg), reload(stg)  # reloads modules before executing the code below
+
 # NOTE: make changes to lo, if, tof, mixer offsets in 'configuration.py'
 # NOTE: make changes to constant pulse amp and pulse duration in the qua script below
 
-MEAS_NAME = "rr_spec"  # used for naming the saved data file
+MEAS_NAME = "rr_spec2"  # used for naming the saved data file
 
 ########################################################################################
 ########################           MEASUREMENT SEQUENCE         ########################
 ########################################################################################
 
 # Required parameters
-reps = 1000
+reps = 5000
 f_start = -100e6
 f_stop = 100e6
-f_step = 0.01e6
+f_step = 1e6
 rr_f_list = np.arange(f_start, f_stop, f_step)
 wait_time = 8000  # in clock cycles
 rr_ascale = 1.0
@@ -88,12 +90,12 @@ with program() as rr_spec:
 ############################           GET RESULTS         #############################
 ########################################################################################
 
-job = qm.execute(rr_spec)
+job = stg.qm.execute(rr_spec)
 result_handle = job.result_handles
 result_handle.wait_for_all_values()
-I_handle = result_handle.get("I_mem")
-Q_handle = result_handle.get("Q_mem")
-results = np.abs(I_handle.fetch_all() + 1j * Q_handle.fetch_all())
+I_list = result_handle.get("I_mem").fetch_all()[0, 0]
+Q_list = result_handle.get("Q_mem").fetch_all()[0, 0]
+results = np.abs(I_list + 1j * Q_list)
 plt.plot(rr_f_list, results)
 
 
@@ -114,4 +116,3 @@ plt.savefig(imgpath)
 ########################################################################################
 ########################################################################################
 ########################################################################################
-plt.show()  # this blocks execution, and is hence run at the end of the script
