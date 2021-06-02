@@ -26,3 +26,4 @@ def update_results(raw_data, N, result_handles, handle_tags):
         raw_data[tag] = np.array(list(raw_data[tag]) + list(partial_results))
 
     return raw_data
+        
