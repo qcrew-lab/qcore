@@ -16,7 +16,7 @@ for name in os.listdir(os.path.dirname(fit_funcs.__file__)):
     if name == "__init__.py" or not name.endswith(".py"):
         continue
     name = name[:-3]
-    mod = importlib.import_module("analysis.fit_funcs." + name)
+    mod = importlib.import_module("qcrew.codebase.analysis.fit_funcs." + name)
     reload(mod)
     func = getattr(mod, "func")
     guess = getattr(mod, "guess")
