@@ -9,6 +9,7 @@ from qcrew.experiments.coax_test.imports import configuration as cfg
 from qcrew.experiments.coax_test.imports import stage as stg
 from qcrew.codebase.analysis.plot import plot_fit
 from qcrew.codebase.analysis.qm_get_results import update_results
+from qcrew.codebase.analysis.plot import FakeLivePlotter
 
 from datetime import datetime, date
 from pathlib import Path
