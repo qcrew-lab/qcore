@@ -18,21 +18,21 @@ wait_time = 8000  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-f_start = -100e6
-f_stop = 100e6
-f_step = 0.01e6
+f_start = -200e6
+f_stop = 200e6
+f_step = 0.02e6
 qubit_f_list = np.arange(f_start, f_stop, f_step)
-qubit_ascale = 1.0
+qubit_ascale = 2.0
 qubit_op = "saturation"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
-rr_f = rr.parameters["int_freq"]
-rr_ascale = 0.4
+rr_f = rr.int_freq
+rr_ascale = 1.0
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
-# NOTE: The weights must be defined for the chosen measurement operation
+# NOTE: The weights must be defined in configuration.py for the chosen msmt operation
 
 with program() as qubit_spec:
     # Iteration variable
@@ -77,22 +77,23 @@ with program() as qubit_spec:
         I_st.buffer(len(qubit_f_list)).save_all("I")
         Q_st.buffer(len(qubit_f_list)).save_all("Q")
 
+
 ########################################################################################
 ############################           GET RESULTS         #############################
 ########################################################################################
 
-qubit_LO_list = np.arange(4.5e9, 7e9, 195e6)
+qubit_LO_list = np.arange(4.0e9, 6e9, 385e6)
 
 for qubit_LO in qubit_LO_list:
     stg.lb_qubit.frequency = qubit_LO
     job = stg.qm.execute(qubit_spec)
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(12, 6))
     ax = fig.add_subplot(1, 1, 1)
     hdisplay = display.display("", display_id=True)
     raw_data = {}
     result_handles = job.result_handles
-    N = 100  # Maximum size of data batch for each refresh
+    N = 10  # Maximum size of data batch for each refresh
     remaining_data = reps
     while remaining_data != 0:
         # clear data
@@ -101,8 +102,8 @@ for qubit_LO in qubit_LO_list:
         # update data
         N = min(N, remaining_data)  # don't wait for more than there's left
         raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg"])
-        I_avg = np.average(raw_data["I_avg"], axis=0)
-        Q_avg = np.average(raw_data["Q_avg"], axis=0)
+        I_avg = raw_data["I_avg"][-1]
+        Q_avg = raw_data["Q_avg"][-1]
         amps = np.abs(I_avg + 1j * Q_avg)
         remaining_data -= N
 
@@ -119,18 +120,15 @@ for qubit_LO in qubit_LO_list:
         # update figure
         hdisplay.update(fig)
 
-    ################################################################################
-    ######################         SAVE RESULTS         ############################
-    ################################################################################
-
     metadata = f"{reps = }, {f_start = }, {f_stop = }, {f_step = }, {wait_time = }, \
         {qubit_ascale = }, {qubit_op = }, {qubit_LO = }, {rr_f = }, {rr_ascale = }, \
         {rr_op = }"
     filename = f"{datetime.now().strftime('%H-%M-%S')}_{MEAS_NAME}"
     datapath = DATA_FOLDER_PATH / (filename + ".csv")
     imgpath = DATA_FOLDER_PATH / (filename + ".png")
-
+    print(qubit_LO)
     with datapath.open("w") as f:
         f.write(metadata)
         np.savetxt(datapath, [qubit_f_list, amps], delimiter=",")
     plt.savefig(imgpath)
+    print(qubit_LO)
