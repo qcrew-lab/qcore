@@ -28,26 +28,26 @@ def IQ_imbalance(gain: float, phase: float) -> list[float]:
 ########################################################################################
 # NOTE: you may change these parameters between measurement runs
 
-qubit_LO = 5e9
+qubit_LO = 4e9
 qubit_IF = -50e6
 
 rr_LO = 8.5993e9
-rr_IF = -45.3e6
+rr_IF = -45.2e6
 
-rr_time_of_flight = 224  # must be integer multiple of 4 >= 180
+rr_time_of_flight = 444  # must be integer multiple of 4 >= 180
 
 # NOTE: please copy paste results of mixer tuning in the respective dicts below
 qubit_mixer_offsets = {
-    "I": -0.030612957524135707,
-    "Q": 0.04470508645754309,
-    "G": 0.13341304883360866,
-    "P": -0.056090443208813685,
+    "I": -0.0016439652070403096,
+    "Q": -0.013795564696192742,
+    "G": -0.1732239723205567,
+    "P": 0.08982601165771487,
 }
 rr_mixer_offsets = {
-    "I": 0.00641021728515625,
-    "Q": -0.009762573242187501,
-    "G": -0.15176925659179688,
-    "P": 0.03741607666015624,
+    "I": -0.011920919595286253,
+    "Q": 0.0013048585737124095,
+    "G": 0.1681966945528984,
+    "P": -0.1174593359231949,
 }
 
 ########################################################################################
@@ -73,8 +73,8 @@ gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
 ########################################################################################
 # NOTE: change these accordingly if you change the connections of the OPX outputs/inputs
 
-qubit_ports = {"I": 2, "Q": 1}  # from OPX's point of view, these are analog outputs
-rr_ports = {"I": 3, "Q": 4, "out": 1}  # "out" is analog input from the OPX's POV
+qubit_ports = {"I": 1, "Q": 2}  # from OPX's point of view, these are analog outputs
+rr_ports = {"I": 4, "Q": 3, "out": 1}  # "out" is analog input from the OPX's POV
 
 ########################################################################################
 ###############################           CONFIG         ###############################
