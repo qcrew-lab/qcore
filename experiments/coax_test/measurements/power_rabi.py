@@ -86,8 +86,8 @@ while remaining_data != 0:
     # update data
     N = min(N, remaining_data)  # don't wait for more than there's left
     raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg"])
-    I_avg = np.average(raw_data["I_avg"], axis=0)
-    Q_avg = np.average(raw_data["Q_avg"], axis=0)
+    I_avg = raw_data["I_avg"][-1]
+    Q_avg = raw_data["Q_avg"][-1]
     amps = np.abs(I_avg + 1j * Q_avg)
     remaining_data -= N
 

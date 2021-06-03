@@ -13,16 +13,16 @@ MEAS_NAME = "qubit_spec"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 100
+reps = 10000
 wait_time = 8000  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-f_start = 0e6
-f_stop = 10e6
-f_step = 1e6
+f_start = -50e6
+f_stop = -10e6
+f_step = 0.2e6
 qubit_f_list = np.arange(f_start, f_stop, f_step)
-qubit_ascale = 1.0
+qubit_ascale = 2.0
 qubit_op = "saturation"  # qubit operation as defined in config
 
 # Measurement pulse
@@ -97,8 +97,8 @@ while remaining_data != 0:
     # update data
     N = min(N, remaining_data)  # don't wait for more than there's left
     raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg"])
-    I_avg = np.average(raw_data["I_avg"], axis=0)
-    Q_avg = np.average(raw_data["Q_avg"], axis=0)
+    I_avg = raw_data["I_avg"][-1]
+    Q_avg = raw_data["Q_avg"][-1]
     amps = np.abs(I_avg + 1j * Q_avg)
     remaining_data -= N
 
