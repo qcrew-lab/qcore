@@ -14,7 +14,7 @@ ADC_RESOLUTION = 2 ** 12  # used for converting ADC reading to analog voltage me
 ########################################################################################
 
 # Loop parameters
-reps = 20000
+reps = 40000
 wait_time = 8000  # in clock cycles
 
 # Measurement pulse
@@ -29,6 +29,7 @@ integW2 = "integW2"  # integration weight for Q
 with program() as tof_calib:
     adc_stream = declare_stream(adc_trace=True)
     n = declare(int)
+    update_frequency(rr.name, rr_f)
 
     with for_(n, 0, n < reps, n + 1):
         reset_phase(rr.name)
