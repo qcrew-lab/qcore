@@ -13,16 +13,16 @@ MEAS_NAME = "rr_spec"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 5000
-wait_time = 10000  # in clock cycles
+reps = 20000
+wait_time = 5000  # in clock cycles
 
 # Measurement pulse
 rr = stg.rr
-f_start = -55e6
-f_stop = -40e6
-f_step = 0.02e6
+f_start = -52e6
+f_stop = -45e6
+f_step = 0.01e6
 rr_f_list = np.arange(f_start, f_stop, f_step)
-rr_ascale = 1.0
+rr_ascale = 0.03
 rr_op = 'readout'
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
@@ -65,8 +65,13 @@ result_handle.wait_for_all_values()
 I_handle = result_handle.get("I_mem")
 Q_handle = result_handle.get("Q_mem")
 results = np.abs(I_handle.fetch_all() + 1j * Q_handle.fetch_all())
+plt.figure(figsize=(10, 8))
 plt.plot(rr_f_list, results)
 
+# from scipy.signal import find_peaks
+# peaks, _ = find_peaks(results, height = 1.75e-5)
+# print("peak is at", rr_f_list[peaks])
+# print("peak is at", results[peaks])
 ########################################################################################
 ############################           SAVE RESULTS         ############################
 ########################################################################################

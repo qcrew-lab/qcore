@@ -35,9 +35,9 @@ long_readout_len = 4000
 readout_len = 4000
 
 rr_LO = int(9.453e9)
-rr_IF = int(-50e6)
+rr_IF = int(-49.4e6)  # int(-49.35e6)  # int(-49.51e6)
 
-qubit_LO = int(4e9)  # int(4.1286e+9)
+qubit_LO = int(4.1e9)  # int(4.1286e+9)
 qubit_IF = int(-50e6)
 
 gaussian_length = 150 * 6
@@ -53,20 +53,30 @@ rr_mixer_phase = -0.10307483673095706
 rr_offset_I = 0.10078125
 rr_offset_Q = -0.008203125
 
+# rr_mixer_gain = 0.048832416534423814
+# rr_mixer_phase = -0.10307483673095706
+# rr_offset_I = 0.10078125
+# rr_offset_Q = -0.008203125
+
+
 # rr_mixer_gain = 0
 # rr_mixer_phase =  0
 # rr_offset_I = 0
 # rr_offset_Q = 0
 
-qubit_mixer_gain = -0.03290181159973145
-qubit_mixer_phase = 0.12228269577026368
+# I: -0.06056245603831484
+# Q: 0.040668959985487155
+# G: -0.02298860754817724
+# P: 0.10456010587513448
+###############################################################
+qubit_mixer_gain = -0.02298860754817724
+qubit_mixer_phase = 0.10456010587513448
+qubit_offset_I = -0.06056245603831484
+qubit_offset_Q = 0.040668959985487155
 
-qubit_offset_I = -0.057408704025874606
-qubit_offset_Q = 0.01968084935542721
 
 # qubit_mixer_gain = 0
 # qubit_mixer_phase = 0
-
 # qubit_offset_I = 0
 # qubit_offset_Q =  0
 
@@ -138,14 +148,14 @@ config = {
                 "readout": "readout_pulse",
             },
             "outputs": {"out1": ("con1", 1)},
-            "time_of_flight": 800,
+            "time_of_flight": 1200,  # 1200,
             "smearing": 12,
         },
     },
     "pulses": {
         "CW": {
             "operation": "control",
-            "length": 60000,
+            "length": 15000,
             "waveforms": {"I": "const_wf", "Q": "zero_wf"},
         },
         "saturation_pulse": {

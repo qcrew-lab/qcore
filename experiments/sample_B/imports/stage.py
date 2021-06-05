@@ -51,7 +51,7 @@ mixer_rr = QuantumElement(
     phase_offset=rr_mixer_offsets["P"],
 )
 rr = QuantumElement(name="rr", lo_freq=rr_LO, int_freq=rr_IF, mixer=mixer_rr)
-lb_rr = LabBrick(name="lb_rr", serial_number=25336, frequency=rr_LO, power=13)
+lb_rr = LabBrick(name="lb_rr", serial_number=25336, frequency=rr_LO, power=15)
 
 
 ########################################################################################

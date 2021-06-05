@@ -13,17 +13,18 @@ MEAS_NAME = "rr_spectroscopy_low_power_sweep"  # used for naming the saved data 
 ########################################################################################
 
 # Required parameters
-reps = 5000
+reps = 20000
 f_start = -51e6
-f_stop = -47e6
+f_stop = -48.5e6
 f_step = 0.01e6
 rr_f_list = np.arange(f_start, f_stop, f_step)
-wait_time = 10000  # in clock cycles
-rr_ascale = np.arange(0.06, 0.09, 0.005)
+wait_time = 20000  # in clock cycles
+rr_ascale = np.array([0.01, 0.02, 0.03, 0.04])
+
 
 # Parameters for optional qubit pulse
 play_qubit = False
-qubit_ascale = 1.0
+qubit_ascale = 0.0
 qubit_f = -50e6  # IF frequency of qubit pulse
 qubit_op = "gaussian"  # qubit operation as defined in config
 
@@ -103,7 +104,14 @@ for index, rr_amplitude in enumerate(rr_ascale):
 plt.legend()
 plt.show()
 
-########################################################################################
+# I_list = result_handle.get("I_mem").fetch_all()[0, 0]
+# Q_list = result_handle.get("Q_mem").fetch_all()[0, 0]
+# results = np.abs(I_list + 1j * Q_list)
+# from scipy.signal import find_peaks
+# peaks, _ = find_peaks(results, height = 0.5e-5)
+# print("peak is at", rr_f_list[peaks])
+# print("peak is at", results[peaks])
+#######################################################################################
 ############################           SAVE RESULTS         ############################
 ########################################################################################
 
