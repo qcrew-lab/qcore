@@ -17,9 +17,15 @@ def plot_fit(xs, ys, axis, y_errs=None, fit_func="sine"):
     params = fit.do_fit(fit_func, xs, ys)
     fit_ys = fit.eval_fit(fit_func, params, xs)
 
-    axis.plot(xs, fit_ys)
+    axis.plot(
+        xs,
+        fit_ys,
+        color="m",
+        lw=3,
+    )
 
     return params
+
 
 class FakeLivePlotter:
     def __init__(self):
