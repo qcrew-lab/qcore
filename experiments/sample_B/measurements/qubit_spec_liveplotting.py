@@ -7,6 +7,7 @@ reload(cfg), reload(stg)  # reloads modules before executing the code below
 # NOTE: make changes to constant pulse amp and pulse duration in the qua script below
 
 MEAS_NAME = "qubit_spec_live"  # used for naming the saved data file
+from qcrew.codebase.instruments import MetaInstrument, QuantumElement, Sa124
 
 ########################################################################################
 ########################           MEASUREMENT SEQUENCE         ########################
@@ -14,21 +15,21 @@ MEAS_NAME = "qubit_spec_live"  # used for naming the saved data file
 
 # Loop parameters
 reps = 10000
-wait_time = 30000  # in clock cycles
-
+wait_time = 80000  # in clock cycles
+ 
 # Qubit pulse
 qubit = stg.qubit
-f_start = -200e6
-f_stop = 0e6
-f_step = 0.1e6
+f_start = -55e6 
+f_stop = -45e6
+f_step = 0.01e6
 qubit_f_list = np.arange(f_start, f_stop, f_step)
-qubit_ascale = 1.2
+qubit_ascale = 1
 qubit_op = "saturation"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
 rr_f = rr.int_freq
-rr_ascale = 0.035
+rr_ascale = 0.015
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
@@ -83,7 +84,8 @@ with program() as qubit_spec:
 
 job = stg.qm.execute(qubit_spec)
 
-fig = plt.figure()
+
+fig = plt.figure(figsize=(20, 5))
 ax = fig.add_subplot(1, 1, 1)
 hdisplay = display.display("", display_id=True)
 raw_data = {}
@@ -102,7 +104,7 @@ while remaining_data != 0:
     remaining_data -= N
 
     # plot averaged data
-    ax.plot(qubit_f_list, amps)
+    ax.plot(qubit_f_list/1e6, amps)
 
     # plot fitted curve
     # params = plot_fit(qubit_f_list, amps, ax, fit_func="lorentzian")

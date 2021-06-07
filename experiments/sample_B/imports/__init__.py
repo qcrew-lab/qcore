@@ -7,8 +7,9 @@ from qm.qua import *
 from importlib import reload
 from qcrew.experiments.sample_B.imports import configuration as cfg
 from qcrew.experiments.sample_B.imports import stage as stg
-#from qcrew.codebase.analysis.plot import plot_fit
+from qcrew.codebase.analysis.plot import plot_fit
 from qcrew.codebase.analysis.qm_get_results_new import update_results
+
 
 from datetime import datetime, date
 from pathlib import Path

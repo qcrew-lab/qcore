@@ -1,134 +1,124 @@
 # import all objects defined in the __init__.py file in the 'imports' folder
 from qcrew.experiments.sample_B.imports import *
-from scipy.signal import find_peaks
-from scipy.optimize import curve_fit
+
 
 reload(cfg), reload(stg)  # reloads modules before executing the code below
 
 # NOTE: make changes to lo, if, tof, mixer offsets in 'configuration.py'
 # NOTE: make changes to constant pulse amp and pulse duration in the qua script below
 
-MEAS_NAME = "time_rabi"  # used for naming the saved data file
+MEAS_NAME = "power_rabi"  # used for naming the saved data file
 
 ########################################################################################
 ########################           MEASUREMENT SEQUENCE         ########################
 ########################################################################################
 
 # Loop parameters
-reps = 8000
-wait_time = 20000  # in clock cycles
+reps = 40000
+wait_time = 80000  # in clock cycles
+
+# Qubit pulse
+qubit = stg.qubit
+a_start = -1.5
+a_stop = 1.5
+a_step = 0.05
+qubit_a_list = np.arange(a_start, a_stop, a_step)
+qubit_f = qubit.int_freq
+qubit_op = "saturation"  # qubit operation as defined in config
 
 # Measurement pulse
-update_rr_if = True
-rr_if = -49.4e+6
-rr_if = int(rr_if)
 rr = stg.rr
-
-rr_ascale = 0.07
-rr_op = 'readout'
+rr_f = rr.int_freq
+rr_ascale = 0.015
+rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
-# NOTE: The weights must be defined for the chosen measurement operation
+# NOTE: The weights must be defined in configuration.py for the chosen msmt operation
 
-# Parameters for optional qubit pulse
-play_qubit = True
-
-a_start = 0
-a_stop = 1.4
-a_step = 0.01
-qubit_a_list = np.arange(a_start, a_stop, a_step)
-
-qubit_f = -50e6  # IF frequency of qubit pulse
-qubit_op = "gaussian"  # qubit operation as defined in config
-
-# Rearranges the input parameters in arrays over which QUA can
-# iterate. The arrays are given in the order of outer to inner
-# loop.
-# parameter_list = [
-#     (x.flatten()) for x in np.meshgrid(qubit_ascale, rr_ascale, indexing="ij")
-# ]
-
-# # Defines buffer size for averaging
-# buffer_lengths = [
-#     1 if type(x).__name__ in {"int", "float"} else len(x)
-#     for x in [qubit_ascale, rr_ascale, rr_f_list]
-# ]
 
 with program() as power_rabi:
-    # Iteration variable
     n = declare(int)
-    qubit_a = declare(fixed)
+    a = declare(fixed)
 
-    rr_a = declare(fixed, value=rr_ascale)
-    update_rr_if = declare(bool, value=update_rr_if)
-
-    # Outputs
     I = declare(fixed)
     Q = declare(fixed)
-
-    # Streams
     I_st = declare_stream()
     Q_st = declare_stream()
-    
+    I_st_avg = declare_stream()
+    Q_st_avg = declare_stream()
 
-    with if_(update_rr_if):
-        rr_freq = declare(int, value=rr_if)
-        update_frequency('rr', rr_freq)
+    update_frequency(rr.name, rr_f)
+    update_frequency(qubit.name, qubit_f)
 
-    # Averaging loop   
-    with for_(n, 0, n < reps, n + 1): # outer averaging loop
-        with for_(qubit_a, a_start, qubit_a < a_stop, qubit_a + a_step): # inner frequency sweep
-            
-            play(qubit_op * amp(qubit_a), "qubit", condition=play_qubit)
-        
-            align('qubit', 'rr')
-            measure(rr_op * amp(rr_a), 'rr', None,
-                    demod.full(integW1, I),
-                    demod.full(integW2, Q))
-            
-            wait(wait_time, "qubit")
+    with for_(n, 0, n < reps, n + 1):
+        with for_(a, a_start, a < a_stop, a + a_step):
+            play(qubit_op * amp(a), qubit.name)
+            align(qubit.name, rr.name)
+            measure(rr_op, rr.name, None, (integW1, I), (integW2, Q))
+            wait(wait_time, rr.name)
+            save(I, I_st_avg)
+            save(Q, Q_st_avg)
             save(I, I_st)
             save(Q, Q_st)
-            
 
     with stream_processing():
-        I_st.buffer(len(qubit_a_list)).average().save('I_mem')
-        Q_st.buffer(len(qubit_a_list)).average().save('Q_mem')
-
+        I_st_avg.buffer(len(qubit_a_list)).average().save_all("I_avg")
+        Q_st_avg.buffer(len(qubit_a_list)).average().save_all("Q_avg")
+        I_st.buffer(len(qubit_a_list)).save_all("I")
+        Q_st.buffer(len(qubit_a_list)).save_all("Q")
 
 ########################################################################################
 ############################           GET RESULTS         #############################
 ########################################################################################
 
 job = stg.qm.execute(power_rabi)
-result_handle = job.result_handles
-result_handle.wait_for_all_values()
 
-I_handle = result_handle.get("I_mem")
-Q_handle = result_handle.get("Q_mem")
-results = np.abs(I_handle.fetch_all() + 1j * Q_handle.fetch_all())
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1)
+hdisplay = display.display("", display_id=True)
+raw_data = {}
+result_handles = job.result_handles
+N = 100  # Maximum size of data batch for each refresh
+remaining_data = reps
+while remaining_data != 0:
+    # clear data
+    ax.clear()
 
-plt.plot(qubit_a_list, results)
-plt.show()
+    # update data
+    N = min(N, remaining_data)  # don't wait for more than there's left
+    raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg"])
+    I_avg = raw_data["I_avg"][-1]
+    Q_avg = raw_data["Q_avg"][-1]
+    amps = np.abs(I_avg + 1j * Q_avg)
+    remaining_data -= N
 
+    # plot averaged data
+    ax.scatter(qubit_a_list, amps)
+
+    # plot fitted curve
+    params = plot_fit(qubit_a_list, amps, ax, fit_func="sine")
+    ax.set_title("average of %d results" % (reps - remaining_data))
+
+    # update figure
+    hdisplay.update(fig)
 
 ########################################################################################
 ############################           SAVE RESULTS         ############################
 ########################################################################################
 
-metadata = (
-    f"{reps = }, {f_start = }, {f_stop = }, {f_step = }, {wait_time = }, {rr_ascale = }"
-)
+metadata = f"{reps = }, {a_start = }, {a_stop = }, {a_step = }, {wait_time = }, \
+      {qubit_f = }, {qubit_op = }, {rr_f = }, {rr_ascale = }, {rr_op = }"
 filename = f"{datetime.now().strftime('%H-%M-%S')}_{MEAS_NAME}"
 datapath = DATA_FOLDER_PATH / (filename + ".csv")
 imgpath = DATA_FOLDER_PATH / (filename + ".png")
-
+print(datapath)
+print(imgpath)
 with datapath.open("w") as f:
     f.write(metadata)
-    np.savetxt(datapath, [rr_f_list, results], delimiter=",")
+    np.savetxt(datapath, [qubit_a_list, amps], delimiter=",")
+
 plt.savefig(imgpath)
 
 ########################################################################################
 ########################################################################################
 ########################################################################################
-plt.show()  # this blocks execution, and is hence run at the end of the script

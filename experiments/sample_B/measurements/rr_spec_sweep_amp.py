@@ -18,7 +18,7 @@ f_start = -51e6
 f_stop = -48.5e6
 f_step = 0.01e6
 rr_f_list = np.arange(f_start, f_stop, f_step)
-wait_time = 20000  # in clock cycles
+wait_time = 10000  # in clock cycles
 rr_ascale = np.array([0.01, 0.02, 0.03, 0.04])
 
 

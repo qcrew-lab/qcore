@@ -5,19 +5,13 @@ import numpy as np
 # AUXILIARY FUNCTIONS:
 ######################
 
-##### Gauss wf format as given by QM.
-# def gauss(amplitude, mu, sigma, length):
-#    t = np.linspace(-length / 2, length / 2, length)
-#    gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
-#    return [float(x) for x in gauss_wave]
 
-
-def gauss(amplitude, sigma, multiple_of_sigma):
-    length = int(multiple_of_sigma * sigma)  # multiple of sigma should be an integer
-    mu = int(np.floor(length / 2))  # instant of gaussian peak
-    t = np.linspace(0, length - 1, length)  # time array ::length:: number of elements
-    gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
-    return [float(x) for x in gauss_wave]
+def gaussian_fn(maximum: float, sigma: float, multiple_of_sigma: int) -> np.ndarray:
+    length = int(multiple_of_sigma * sigma)
+    mu = int(np.floor(length / 2))
+    t = np.linspace(0, length - 1, length)
+    gaussian = maximum * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    return [float(x) for x in gaussian]
 
 
 def IQ_imbalance(g, phi):
@@ -31,54 +25,36 @@ def IQ_imbalance(g, phi):
 # CONFIGURATION:
 ################
 
-long_readout_len = 4000
+saturation_pulse_len = 15000
+saturation_pulse_amp = 0.25
+
+cw_pulse_len = 15000
+cw_pulse_amp = 0.2
+
 readout_len = 4000
+readout_pulse_amp = 0.2
+
+gaussian_pulse_wf_I_samples = gaussian_fn(0.25, 150, 6)  # (amp, sigma, multiple_sigma)
+gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
+
+rr_time_of_flight = 1200
 
 rr_LO = int(9.453e9)
-rr_IF = int(-49.4e6)  # int(-49.35e6)  # int(-49.51e6)
+rr_IF = int(-49.25e6)  # int(-49.35e6)  # int(-49.51e6)
 
-qubit_LO = int(4.1e9)  # int(4.1286e+9)
+qubit_LO = int(4.1255e9)  # int(4.1286e+9)
 qubit_IF = int(-50e6)
-
-gaussian_length = 150 * 6
-gaussian_length2 = 12 * 10
-
-delta2 = 12
-mutiple_delta2 = 10
-amplitude_pi_gate = 0.931
-
 
 rr_mixer_gain = 0.048832416534423814
 rr_mixer_phase = -0.10307483673095706
 rr_offset_I = 0.10078125
 rr_offset_Q = -0.008203125
 
-# rr_mixer_gain = 0.048832416534423814
-# rr_mixer_phase = -0.10307483673095706
-# rr_offset_I = 0.10078125
-# rr_offset_Q = -0.008203125
+qubit_mixer_gain = 0.01411627754569054
+qubit_mixer_phase = 0.07736417464911938
+qubit_offset_I = -0.011938131041824819
+qubit_offset_Q = -0.0015285410918295388
 
-
-# rr_mixer_gain = 0
-# rr_mixer_phase =  0
-# rr_offset_I = 0
-# rr_offset_Q = 0
-
-# I: -0.06056245603831484
-# Q: 0.040668959985487155
-# G: -0.02298860754817724
-# P: 0.10456010587513448
-###############################################################
-qubit_mixer_gain = -0.02298860754817724
-qubit_mixer_phase = 0.10456010587513448
-qubit_offset_I = -0.06056245603831484
-qubit_offset_Q = 0.040668959985487155
-
-
-# qubit_mixer_gain = 0
-# qubit_mixer_phase = 0
-# qubit_offset_I = 0
-# qubit_offset_Q =  0
 
 qubit_mixer_offsets = {
     "I": qubit_offset_I,
@@ -128,10 +104,6 @@ config = {
                 "CW": "CW",
                 "saturation": "saturation_pulse",
                 "gaussian": "gaussian_pulse",
-                "gaussian2": "gaussian_pulse2",
-                "pi": "pi_pulse",
-                "pi2": "pi2_pulse",
-                "minus_pi2": "minus_pi2_pulse",
             },
         },
         "rr": {
@@ -144,59 +116,29 @@ config = {
             "intermediate_frequency": rr_IF,
             "operations": {
                 "CW": "CW",
-                "long_readout": "long_readout_pulse",
+                "gaussian": "gaussian_pulse",
                 "readout": "readout_pulse",
             },
             "outputs": {"out1": ("con1", 1)},
-            "time_of_flight": 1200,  # 1200,
+            "time_of_flight": rr_time_of_flight,  # 1200,
             "smearing": 12,
         },
     },
     "pulses": {
         "CW": {
             "operation": "control",
-            "length": 15000,
+            "length": cw_pulse_len,
             "waveforms": {"I": "const_wf", "Q": "zero_wf"},
         },
         "saturation_pulse": {
             "operation": "control",
-            "length": 20000,  # 15000,  # several T1s
+            "length": saturation_pulse_len,  # 15000,  # several T1s
             "waveforms": {"I": "saturation_wf", "Q": "zero_wf"},
         },
         "gaussian_pulse": {
             "operation": "control",
-            "length": gaussian_length,
+            "length": gaussian_pulse_len,
             "waveforms": {"I": "gauss_wf", "Q": "zero_wf"},
-        },
-        "gaussian_pulse2": {
-            "operation": "control",
-            "length": gaussian_length2,
-            "waveforms": {"I": "gauss_wf2", "Q": "zero_wf2"},
-        },
-        "pi_pulse": {
-            "operation": "control",
-            "length": gaussian_length,
-            "waveforms": {"I": "pi_wf", "Q": "zero_wf"},
-        },
-        "pi2_pulse": {
-            "operation": "control",
-            "length": gaussian_length,
-            "waveforms": {"I": "pi2_wf", "Q": "zero_wf"},
-        },
-        "minus_pi2_pulse": {
-            "operation": "control",
-            "length": 60,
-            "waveforms": {"I": "minus_pi2_wf", "Q": "zero_wf"},
-        },
-        "long_readout_pulse": {
-            "operation": "measurement",
-            "length": long_readout_len,
-            "waveforms": {"I": "long_readout_wf", "Q": "zero_wf"},
-            "integration_weights": {
-                "long_integW1": "long_integW1",
-                "long_integW2": "long_integW2",
-            },
-            "digital_marker": "ON",
         },
         "readout_pulse": {
             "operation": "measurement",
@@ -212,42 +154,29 @@ config = {
         },
     },
     "waveforms": {
-        "const_wf": {"type": "constant", "sample": 0.25},
-        "zero_wf": {"type": "constant", "sample": 0.0},
-        "saturation_wf": {"type": "constant", "sample": 0.25},
+        "saturation_wf": {
+            "type": "constant",
+            "sample": saturation_pulse_amp,
+        },
+        "const_wf": {
+            "type": "constant",
+            "sample": cw_pulse_amp,
+        },
+        "zero_wf": {
+            "type": "constant",
+            "sample": 0.0,
+        },
         "gauss_wf": {
             "type": "arbitrary",
-            "samples": gauss(0.25, 150.0, 6),  # gauss(0.25, 0.0, 6.0, 60)
+            "samples": gaussian_pulse_wf_I_samples,
         },
-        "gauss_wf2": {
-            "type": "arbitrary",
-            "samples": gauss(0.25, delta2, mutiple_delta2),
+        "readout_wf": {
+            "type": "constant",
+            "sample": readout_pulse_amp,
         },
-        "zero_wf2": {"type": "constant", "sample": 0.0},
-        "pi_wf": {
-            "type": "arbitrary",
-            "samples": gauss(amplitude_pi_gate * 0.25, 150.0, 6),
-        },
-        "pi2_wf": {
-            "type": "arbitrary",
-            "samples": gauss(
-                0.5 * amplitude_pi_gate * 0.25, 150.0, 6
-            ),  # gauss(0.15, 6.0, 10)
-        },
-        "minus_pi2_wf": {"type": "arbitrary", "samples": gauss(-0.15, 6.0, 10)},
-        "long_readout_wf": {"type": "constant", "sample": 0.32},
-        "readout_wf": {"type": "constant", "sample": 0.25},
     },
     "digital_waveforms": {"ON": {"samples": [(1, 0)]}},
     "integration_weights": {
-        "long_integW1": {
-            "cosine": [1.0] * int(long_readout_len / 4),
-            "sine": [0.0] * int(long_readout_len / 4),
-        },
-        "long_integW2": {
-            "cosine": [0.0] * int(long_readout_len / 4),
-            "sine": [1.0] * int(long_readout_len / 4),
-        },
         "integW1": {
             "cosine": [1.0] * int(readout_len / 4),
             "sine": [0.0] * int(readout_len / 4),

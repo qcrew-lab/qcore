@@ -364,24 +364,29 @@ if __name__ == "__main__":
 
     print("Please copy paste these results in the QM config!")
     print("\n" * 20)
-    
+    sa.disconnect()
+   ########################################################
+
+    sa = Sa124(name="sa", serial_number=20234154)
     with program() as cw:
         with infinite_loop_():
             play("CW","rr")
     
     job = qm.execute(cw)
-    freqs, amps = sa.sweep(center = rr.lo_freq, span = 200e6, ref_power = 0)
+    freqs, amps = sa.sweep(center = rr.lo_freq, span = 400e6, ref_power = 0)
     plt.plot(freqs, amps)
     plt.show()
     job.halt()
+    sa.disconnect()
     
 
-        
+    
     with program() as cw:
         with infinite_loop_():
             play("CW","qubit")
     job = qm.execute(cw)
-    freqs, amps = sa.sweep(center = qubit_LO, span = 200e6, ref_power = 0)
+    sa = Sa124(name="sa", serial_number=20234154)
+    freqs, amps = sa.sweep(center = qubit_LO, span = 400e6, ref_power = 0)
     plt.plot(freqs, amps)
     plt.show()
     job.halt()
