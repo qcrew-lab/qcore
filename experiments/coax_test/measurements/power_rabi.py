@@ -13,13 +13,13 @@ MEAS_NAME = "power_rabi"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 1000
-wait_time = 8000  # in clock cycles
+reps = 200
+wait_time = 20000  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-a_start = -1
-a_stop = 1
+a_start = -2
+a_stop = 2
 a_step = 0.01
 qubit_a_list = np.arange(a_start, a_stop, a_step)
 qubit_f = qubit.int_freq
@@ -92,7 +92,7 @@ while remaining_data != 0:
     remaining_data -= N
 
     # plot averaged data
-    ax.plot(qubit_a_list, amps)
+    ax.scatter(qubit_a_list, amps)
 
     # plot fitted curve
     params = plot_fit(qubit_a_list, amps, ax, fit_func="sine")
@@ -100,9 +100,6 @@ while remaining_data != 0:
 
     # update figure
     hdisplay.update(fig)
-
-# please see "qm_get_results.py" in "analysis" package in "codebase" for an attempt
-# to get partial results from QM
 
 ########################################################################################
 ############################           SAVE RESULTS         ############################

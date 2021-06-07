@@ -13,17 +13,17 @@ MEAS_NAME = "qubit_spec"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 10000
-wait_time = 8000  # in clock cycles
+reps = 20000
+wait_time = 20000  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-f_start = -50e6
-f_stop = -10e6
-f_step = 0.2e6
+f_start = -57e6
+f_stop = -47e6
+f_step = 0.01e6
 qubit_f_list = np.arange(f_start, f_stop, f_step)
-qubit_ascale = 2.0
-qubit_op = "saturation"  # qubit operation as defined in config
+qubit_ascale = 1.17
+qubit_op = "gaussian"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
@@ -103,7 +103,7 @@ while remaining_data != 0:
     remaining_data -= N
 
     # plot averaged data
-    ax.plot(qubit_f_list, amps)
+    ax.scatter(qubit_f_list, amps, s=6, color='black')
 
     # plot fitted curve
     params = plot_fit(qubit_f_list, amps, ax, fit_func="lorentzian")
