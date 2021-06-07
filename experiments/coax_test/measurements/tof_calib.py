@@ -14,13 +14,13 @@ ADC_RESOLUTION = 2 ** 12  # used for converting ADC reading to analog voltage me
 ########################################################################################
 
 # Loop parameters
-reps = 40000
-wait_time = 8000  # in clock cycles
+reps = 10000
+wait_time = 80000  # in clock cycles
 
 # Measurement pulse
 rr = stg.rr
 rr_f = rr.int_freq
-rr_ascale = 1.0
+rr_ascale = 0.1
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
