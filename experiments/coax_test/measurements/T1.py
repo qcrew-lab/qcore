@@ -13,8 +13,13 @@ MEAS_NAME = "t1"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
+<<<<<<< HEAD
 reps = 2000
 wait_time = 8000  # in clock cycles
+=======
+reps = 20000
+wait_time = 14000  # in multiples of 4ns
+>>>>>>> 0fc437f8e36ccebbb8babcb8694ebf12e3c8ef08
 
 # Measurement pulse
 rr = stg.rr
@@ -26,14 +31,24 @@ integW2 = "integW2"  # integration weight for Q
 # NOTE: The weights must be defined in configuration.py for the chosen msmt operation
 
 # Wait time between two pulses in clock cycles
+<<<<<<< HEAD
 t_start = 0
 t_stop = 800
 t_step = 1
+=======
+t_start = 4  # must be integer >= 4, this is in multiples of 4 ns.
+t_stop = 10000
+t_step = 20
+>>>>>>> 0fc437f8e36ccebbb8babcb8694ebf12e3c8ef08
 t_list = np.arange(t_start, t_stop, t_step)
 
 # Qubit pulse
 qubit = stg.qubit
+<<<<<<< HEAD
 qubit_ascale = 1.0
+=======
+qubit_ascale = 1.13  # based on power rabi fit
+>>>>>>> 0fc437f8e36ccebbb8babcb8694ebf12e3c8ef08
 qubit_f = qubit.int_freq  # IF of qubit pulse
 qubit_op = "gaussian"  # qubit operation as defined in config
 

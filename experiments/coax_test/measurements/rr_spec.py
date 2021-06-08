@@ -13,6 +13,7 @@ MEAS_NAME = "rr_spec"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
+<<<<<<< HEAD
 reps = 4
 wait_time = 8000  # in clock cycles
 
@@ -21,6 +22,16 @@ rr = stg.rr
 f_start = -47e6
 f_stop = -43e6
 f_step = 1e6
+=======
+reps = 10000
+wait_time = 12500  # in clock cycles
+
+# Measurement pulse
+rr = stg.rr
+f_start = -60e6
+f_stop = -40e6
+f_step = 0.05e6
+>>>>>>> 0fc437f8e36ccebbb8babcb8694ebf12e3c8ef08
 rr_f_list = np.arange(f_start, f_stop, f_step)
 rr_ascale = 0.4
 rr_op = "readout"

@@ -336,7 +336,7 @@ if __name__ == "__main__":
     print("Mixer Tuner is running, please wait for about 30s...")
     start_time = time.perf_counter()
 
-    mixer_tuner.tune(qubit, rr)
+    mixer_tuner.tune_sb(rr)
 
     print("\n" * 3)
 

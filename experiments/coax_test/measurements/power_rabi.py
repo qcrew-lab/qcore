@@ -13,8 +13,8 @@ MEAS_NAME = "power_rabi"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 1000
-wait_time = 8000  # in clock cycles
+reps = 20000
+wait_time = 20000  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
@@ -53,7 +53,13 @@ with program() as power_rabi:
         with for_(a, a_start, a < a_stop, a + a_step):
             play(qubit_op * amp(a), qubit.name)
             align(qubit.name, rr.name)
-            measure(rr_op, rr.name, None, (integW1, I), (integW2, Q))
+            measure(
+                rr_op * amp(rr_ascale),
+                rr.name,
+                None,
+                demod.full(integW1, I),
+                demod.full(integW2, Q),
+            )
             wait(wait_time, rr.name)
             save(I, I_st_avg)
             save(Q, Q_st_avg)
