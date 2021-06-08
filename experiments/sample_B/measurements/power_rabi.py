@@ -14,17 +14,17 @@ MEAS_NAME = "power_rabi"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 40000
-wait_time = 80000  # in clock cycles
+reps = 20000
+wait_time = 100000  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
 a_start = -1.5
 a_stop = 1.5
-a_step = 0.05
+a_step = 0.015
 qubit_a_list = np.arange(a_start, a_stop, a_step)
 qubit_f = qubit.int_freq
-qubit_op = "saturation"  # qubit operation as defined in config
+qubit_op = "gaussian"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
@@ -47,14 +47,22 @@ with program() as power_rabi:
     I_st_avg = declare_stream()
     Q_st_avg = declare_stream()
 
-    update_frequency(rr.name, rr_f)
-    update_frequency(qubit.name, qubit_f)
+    #update_frequency(rr.name, rr_f)
+    #update_frequency(qubit.name, qubit_f)
 
     with for_(n, 0, n < reps, n + 1):
         with for_(a, a_start, a < a_stop, a + a_step):
+            update_frequency(qubit.name, qubit_f) #just a test, will remove later
             play(qubit_op * amp(a), qubit.name)
             align(qubit.name, rr.name)
-            measure(rr_op, rr.name, None, (integW1, I), (integW2, Q))
+            # measure(rr_op, rr.name, None, (integW1, I), (integW2, Q))
+            measure(
+                rr_op * amp(rr_ascale),
+                rr.name,
+                None,
+                demod.full(integW1, I),
+                demod.full(integW2, Q),
+            )
             wait(wait_time, rr.name)
             save(I, I_st_avg)
             save(Q, Q_st_avg)
@@ -93,10 +101,10 @@ while remaining_data != 0:
     remaining_data -= N
 
     # plot averaged data
-    ax.scatter(qubit_a_list, amps)
+    ax.plot(qubit_a_list, amps, ls='None', marker='s')
 
     # plot fitted curve
-    params = plot_fit(qubit_a_list, amps, ax, fit_func="sine")
+    params = plot_fit(qubit_a_list, amps, ax, fit_func=None)
     ax.set_title("average of %d results" % (reps - remaining_data))
 
     # update figure

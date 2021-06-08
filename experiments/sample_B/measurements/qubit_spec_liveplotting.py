@@ -16,14 +16,14 @@ from qcrew.codebase.instruments import MetaInstrument, QuantumElement, Sa124
 # Loop parameters
 reps = 10000
 wait_time = 80000  # in clock cycles
- 
+
 # Qubit pulse
 qubit = stg.qubit
-f_start = -55e6 
-f_stop = -45e6
+f_start = -50e6
+f_stop = -46e6
 f_step = 0.01e6
 qubit_f_list = np.arange(f_start, f_stop, f_step)
-qubit_ascale = 1
+qubit_ascale = 0.9
 qubit_op = "saturation"  # qubit operation as defined in config
 
 # Measurement pulse
@@ -104,7 +104,7 @@ while remaining_data != 0:
     remaining_data -= N
 
     # plot averaged data
-    ax.plot(qubit_f_list/1e6, amps)
+    ax.plot(qubit_f_list / 1e6, amps)
 
     # plot fitted curve
     # params = plot_fit(qubit_f_list, amps, ax, fit_func="lorentzian")
