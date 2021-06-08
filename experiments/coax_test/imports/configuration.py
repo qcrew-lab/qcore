@@ -28,11 +28,11 @@ def IQ_imbalance(gain: float, phase: float) -> list[float]:
 ########################################################################################
 # NOTE: you may change these parameters between measurement runs
 
-qubit_LO = 5.020e9
-qubit_IF = -52.5e6
+qubit_LO = 5.0175e9
+qubit_IF = -50e6
 
-rr_LO = 8.5993e9
-rr_IF = -45.2e6
+rr_LO = 8.6041e9
+rr_IF = -50e6
 
 rr_time_of_flight = 444  # must be integer multiple of 4 >= 180
 
@@ -44,10 +44,10 @@ qubit_mixer_offsets = {
     "P": 0.09413375854492195,
 }
 rr_mixer_offsets = {
-    "I": -0.011920919595286253,
-    "Q": 0.0013048585737124095,
-    "G": 0.1681966945528984,
-    "P": -0.1174593359231949,
+    "I": -0.010745931230485443,
+    "Q": 0.0017933552153408532,
+    "G": 0.15548596382141114,
+    "P": -0.12139883041381835,
 }
 
 ########################################################################################
@@ -65,7 +65,7 @@ readout_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
 saturation_pulse_len = 15000  # must be an integer multiple of 4 >= 16
 saturation_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
 
-gaussian_pulse_wf_I_samples = gaussian_fn(0.2, 700, 6)  # (amp, sigma, multiple_sigma)
+gaussian_pulse_wf_I_samples = gaussian_fn(0.2, 400, 6)  # (amp, sigma, multiple_sigma)
 gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
 
 ########################################################################################
