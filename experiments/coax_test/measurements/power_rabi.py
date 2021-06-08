@@ -13,7 +13,7 @@ MEAS_NAME = "power_rabi"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 200
+reps = 20000
 wait_time = 20000  # in clock cycles
 
 # Qubit pulse
