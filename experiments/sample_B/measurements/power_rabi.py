@@ -104,7 +104,7 @@ while remaining_data != 0:
     ax.plot(qubit_a_list, amps, ls='None', marker='s')
 
     # plot fitted curve
-    params = plot_fit(qubit_a_list, amps, ax, fit_func=None)
+    params = plot_fit(qubit_a_list, amps, ax, fit_func="sine")
     ax.set_title("average of %d results" % (reps - remaining_data))
 
     # update figure

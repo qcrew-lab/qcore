@@ -34,7 +34,7 @@ cw_pulse_amp = 0.2
 readout_len = 4000
 readout_pulse_amp = 0.2
 
-gaussian_pulse_wf_I_samples = gaussian_fn(0.25, 300, 6)  # (amp, sigma, multiple_sigma)
+gaussian_pulse_wf_I_samples = gaussian_fn(0.25, 350, 6)  # (amp, sigma, multiple_sigma)
 gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
 
 rr_time_of_flight = 1200

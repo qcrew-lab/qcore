@@ -6,25 +6,26 @@ reload(cfg), reload(stg)  # reloads modules before executing the code below
 # NOTE: make changes to lo, if, tof, mixer offsets in 'configuration.py'
 # NOTE: make changes to constant pulse amp and pulse duration in the qua script below
 
-MEAS_NAME = "rr_spec_sweep_amp"  # used for naming the saved data file
+MEAS_NAME = "rr_spectroscopy_low_power_sweep"  # used for naming the saved data file
 
 ########################################################################################
 ########################           MEASUREMENT SEQUENCE         ########################
 ########################################################################################
 
+# Required parameters
 reps = 20000
-wait_time = 12500  # in clock cycles, found after rough T1
-
-# readout parameters
-f_start, f_stop, f_step = -51e6, -48.5e6, 0.02e6
+f_start = -51e6
+f_stop = -48.5e6
+f_step = 0.01e6
 rr_f_list = np.arange(f_start, f_stop, f_step)
-a_start, a_stop, num_a = 0.01, 2.0, 60
-#rr_ascale = np.linspace(a_start, a_stop, num_a)  # for sweeping measurement power
-rr_ascale = np.concatenate((np.linspace(0.005, 0.025, 21), np.linspace(0.026, 2, 41)))
+wait_time = 10000  # in clock cycles
+rr_ascale = np.array([0.01, 0.02, 0.03, 0.04])
+
 
 # Parameters for optional qubit pulse
 play_qubit = False
-qubit_ascale = 1.0  # found after a power rabi fit
+qubit_ascale = 0.0
+qubit_f = -50e6  # IF frequency of qubit pulse
 qubit_op = "gaussian"  # qubit operation as defined in config
 
 # Rearranges the input parameters in arrays over which QUA can
@@ -40,7 +41,7 @@ buffer_lengths = [
     for x in [qubit_ascale, rr_ascale, rr_f_list]
 ]
 
-with program() as rr_spec_sweep_amp:
+with program() as rr_spec:
     # Iteration variable
     n = declare(int)
 
@@ -52,6 +53,7 @@ with program() as rr_spec_sweep_amp:
     # Arrays for sweeping
     qubit_a_vec = declare(fixed, value=parameter_list[0])
     rr_a_vec = declare(fixed, value=parameter_list[1])
+    # rr_f_vec = declare(int, value=[int(x) for x in parameter_list[2]])  # freq is int
 
     # Outputs
     I = declare(fixed)
@@ -89,42 +91,41 @@ with program() as rr_spec_sweep_amp:
 ############################           GET RESULTS         #############################
 ########################################################################################
 
-job = stg.qm.execute(rr_spec_sweep_amp)
+job = stg.qm.execute(rr_spec)
 result_handle = job.result_handles
 result_handle.wait_for_all_values()
 
-all_results = dict()  # added to save all results
-
 fig = plt.figure(figsize=(10, 8))
-for index, rr_amp in enumerate(rr_ascale):
+for index, rr_amplitude in enumerate(rr_ascale):
     I_list = result_handle.get("I_mem").fetch_all()[0, index]
     Q_list = result_handle.get("Q_mem").fetch_all()[0, index]
     results = np.abs(I_list + 1j * Q_list)
-    all_results[rr_amp] = results
-    # plt.plot(rr_f_list, results, label="r_a = {}".format((rr_amp)))
-# plt.legend()
-# plt.show()
+    plt.plot(rr_f_list, results, label="r_a = {}".format((rr_amplitude)))
+plt.legend()
+plt.show()
 
+# I_list = result_handle.get("I_mem").fetch_all()[0, 0]
+# Q_list = result_handle.get("Q_mem").fetch_all()[0, 0]
+# results = np.abs(I_list + 1j * Q_list)
+# from scipy.signal import find_peaks
+# peaks, _ = find_peaks(results, height = 0.5e-5)
+# print("peak is at", rr_f_list[peaks])
+# print("peak is at", results[peaks])
 #######################################################################################
 ############################           SAVE RESULTS         ############################
 ########################################################################################
 
-metadata = f"{reps = }, {wait_time = }, {rr_ascale = }, {play_qubit = }, {qubit_ascale = }, {qubit_op = }"
+metadata = f"{reps = }, {wait_time = }, {rr_ascale = }, {play_qubit = }"
 filename = f"{datetime.now().strftime('%H-%M-%S')}_{MEAS_NAME}"
 datapath = DATA_FOLDER_PATH / (filename + ".csv")
 imgpath = DATA_FOLDER_PATH / (filename + ".png")
 
 with datapath.open("w") as f:
     f.write(metadata)
-    f.write("\n")
-    f.write("rr_f_list\n")
-    np.savetxt(f, rr_f_list, delimiter=",")
-    for rr_amp, result in all_results.items():
-        f.write(f"{rr_amp = }\n")
-        np.savetxt(f, result, delimiter=",")
-# plt.savefig(imgpath)
+    np.savetxt(datapath, [rr_f_list, results], delimiter=",")
+plt.savefig(imgpath)
 
 ########################################################################################
 ########################################################################################
 ########################################################################################
-# plt.show()
+plt.show()  # this blocks execution, and is hence run at the end of the script

@@ -107,7 +107,7 @@ while remaining_data != 0:
     ax.plot(qubit_f_list / 1e6, amps)
 
     # plot fitted curve
-    # params = plot_fit(qubit_f_list, amps, ax, fit_func="lorentzian")
+    params = plot_fit(qubit_f_list, amps, ax, fit_func="lorentzian")
     ax.set_title("average of %d results" % (reps - remaining_data))
 
     # update figure
