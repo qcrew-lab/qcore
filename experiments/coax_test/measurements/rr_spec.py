@@ -78,7 +78,7 @@ ax = fig.add_subplot(1, 1, 1)
 hdisplay = display.display("", display_id=True)
 raw_data = {}
 result_handles = job.result_handles
-N = 2 # max size of data batch for each refresh, must be integer > 1
+N = 100  # max size of data batch for each refresh, must be integer > 1
 remaining_data = reps
 while remaining_data != 0:
     # clear data
@@ -91,7 +91,9 @@ while remaining_data != 0:
     Q_avg = raw_data["Q_avg"][-1]
     amps = np.abs(I_avg + 1j * Q_avg)
 
-    rr_f = np.average(raw_data["f"], axis=0)  # just to make sure the I and Q measured is for the rr_f stored on the OPX
+    rr_f = np.average(
+        raw_data["f"], axis=0
+    )  # just to make sure the I and Q measured is for the rr_f stored on the OPX
     remaining_data -= N
 
     # plot averaged data
