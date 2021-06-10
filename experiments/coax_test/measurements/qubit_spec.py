@@ -13,22 +13,22 @@ MEAS_NAME = "qubit_spec"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 10000
-wait_time = 20000  # in clock cycles
+reps = 30000
+wait_time = 12500  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
 f_start = -60e6
 f_stop = -40e6
-f_step = 0.05e6
+f_step = 0.02e6
 qubit_f_list = np.arange(f_start, f_stop, f_step)
-qubit_ascale = 1.17
+qubit_ascale = 1.649
 qubit_op = "gaussian"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
 rr_f = rr.int_freq
-rr_ascale = 1.0
+rr_ascale = 0.2
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
@@ -103,7 +103,7 @@ while remaining_data != 0:
     remaining_data -= N
 
     # plot averaged data
-    ax.scatter(qubit_f_list, amps, s=6, color='black')
+    ax.scatter(qubit_f_list, amps, s=5, color="black")
 
     # plot fitted curve
     params = plot_fit(qubit_f_list, amps, ax, fit_func="lorentzian")

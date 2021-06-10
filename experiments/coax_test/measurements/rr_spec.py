@@ -18,12 +18,12 @@ wait_time = 12500  # in clock cycles
 
 # Measurement pulse
 rr = stg.rr
-f_start = -60e6
-f_stop = -40e6
-f_step = 0.05e6
+f_start = -54e6
+f_stop = -48e6
+f_step = 0.02e6
 rr_f_list = np.arange(f_start, f_stop, f_step)
 rr_f_list_len = len(rr_f_list)
-rr_ascale = 1.0
+rr_ascale = 0.2
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q

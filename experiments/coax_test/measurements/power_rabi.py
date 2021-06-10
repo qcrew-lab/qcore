@@ -14,7 +14,7 @@ MEAS_NAME = "power_rabi"  # used for naming the saved data file
 
 # Loop parameters
 reps = 20000
-wait_time = 20000  # in clock cycles
+wait_time = 12500  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
@@ -28,7 +28,7 @@ qubit_op = "gaussian"  # qubit operation as defined in config
 # Measurement pulse
 rr = stg.rr
 rr_f = rr.int_freq
-rr_ascale = 1.0
+rr_ascale = 0.2
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
@@ -98,7 +98,7 @@ while remaining_data != 0:
     remaining_data -= N
 
     # plot averaged data
-    ax.scatter(qubit_a_list, amps)
+    ax.scatter(qubit_a_list, amps, s=5, c="black")
 
     # plot fitted curve
     params = plot_fit(qubit_a_list, amps, ax, fit_func="sine")
