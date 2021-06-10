@@ -2,9 +2,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
-
 from IPython import display
-
 
 from qcrew.codebase.analysis import fit
 
@@ -16,18 +14,16 @@ def plot_fit(xs, ys, axis, y_errs=None, fit_func="sine"):
             xs, ys, yerr=y_errs, marker="s", ls="none", markersize=3, color="b"
         )
 
-    if fit_func != None:
-        params = fit.do_fit(fit_func, xs, ys)
-        fit_ys = fit.eval_fit(fit_func, params, xs)
+    params = fit.do_fit(fit_func, xs, ys)
+    fit_ys = fit.eval_fit(fit_func, params, xs)
 
-        axis.plot(
-            xs,
-            fit_ys,
-            color="m",
-            lw=3,
-        )
-    else:
-        params = {}
+    axis.plot(
+        xs,
+        fit_ys,
+        color="m",
+        lw=3,
+    )
+
     return params
 
 

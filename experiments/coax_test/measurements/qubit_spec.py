@@ -13,32 +13,22 @@ MEAS_NAME = "qubit_spec"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 10000
-<<<<<<< HEAD
-wait_time = 8000  # in clock cycles
-
-# Qubit pulse
-qubit = stg.qubit
-f_start = -100e6
-f_stop = 100e6
-f_step = 0.01e6
-=======
-wait_time = 20000  # in clock cycles
+reps = 30000
+wait_time = 12500  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
 f_start = -60e6
 f_stop = -40e6
-f_step = 0.05e6
->>>>>>> 0fc437f8e36ccebbb8babcb8694ebf12e3c8ef08
+f_step = 0.02e6
 qubit_f_list = np.arange(f_start, f_stop, f_step)
-qubit_ascale = 1.0
-qubit_op = "saturation"  # qubit operation as defined in config
+qubit_ascale = 1.649
+qubit_op = "gaussian"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
 rr_f = rr.int_freq
-rr_ascale = 1.0
+rr_ascale = 0.2
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
@@ -107,13 +97,13 @@ while remaining_data != 0:
     # update data
     N = min(N, remaining_data)  # don't wait for more than there's left
     raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg"])
-    I_avg = np.average(raw_data["I_avg"], axis=0)
-    Q_avg = np.average(raw_data["Q_avg"], axis=0)
+    I_avg = raw_data["I_avg"][-1]
+    Q_avg = raw_data["Q_avg"][-1]
     amps = np.abs(I_avg + 1j * Q_avg)
     remaining_data -= N
 
     # plot averaged data
-    ax.plot(qubit_f_list, amps)
+    ax.scatter(qubit_f_list, amps, s=5, color="black")
 
     # plot fitted curve
     params = plot_fit(qubit_f_list, amps, ax, fit_func="lorentzian")

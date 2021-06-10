@@ -13,42 +13,27 @@ MEAS_NAME = "t1"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-<<<<<<< HEAD
-reps = 2000
-wait_time = 8000  # in clock cycles
-=======
 reps = 20000
-wait_time = 14000  # in multiples of 4ns
->>>>>>> 0fc437f8e36ccebbb8babcb8694ebf12e3c8ef08
+wait_time = 12500  # in multiples of 4ns
 
 # Measurement pulse
 rr = stg.rr
 rr_f = rr.int_freq
-rr_ascale = 1.0
+rr_ascale = 0.2
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
 # NOTE: The weights must be defined in configuration.py for the chosen msmt operation
 
 # Wait time between two pulses in clock cycles
-<<<<<<< HEAD
-t_start = 0
-t_stop = 800
-t_step = 1
-=======
 t_start = 4  # must be integer >= 4, this is in multiples of 4 ns.
-t_stop = 10000
-t_step = 20
->>>>>>> 0fc437f8e36ccebbb8babcb8694ebf12e3c8ef08
+t_stop = 12500
+t_step = 12
 t_list = np.arange(t_start, t_stop, t_step)
 
 # Qubit pulse
 qubit = stg.qubit
-<<<<<<< HEAD
-qubit_ascale = 1.0
-=======
-qubit_ascale = 1.13  # based on power rabi fit
->>>>>>> 0fc437f8e36ccebbb8babcb8694ebf12e3c8ef08
+qubit_ascale = 1.649  # based on power rabi fit
 qubit_f = qubit.int_freq  # IF of qubit pulse
 qubit_op = "gaussian"  # qubit operation as defined in config
 
@@ -85,8 +70,8 @@ with program() as t1:
                 demod.full(integW1, I),
                 demod.full(integW2, Q),
             )
+            wait(wait_time, qubit.name, rr.name)
 
-            wait(wait_time, qubit.name)
             save(I, I_st_avg)
             save(Q, Q_st_avg)
             save(I, I_st)
@@ -119,16 +104,16 @@ while remaining_data != 0:
     # update data
     N = min(N, remaining_data)  # don't wait for more than there's left
     raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg"])
-    I_avg = np.average(raw_data["I_avg"], axis=0)
-    Q_avg = np.average(raw_data["Q_avg"], axis=0)
+    I_avg = raw_data["I_avg"][-1]
+    Q_avg = raw_data["Q_avg"][-1]
     amps = np.abs(I_avg + 1j * Q_avg)
     remaining_data -= N
 
     # plot averaged data
-    ax.plot(t_list, amps)
+    ax.scatter(t_list, amps, s=4)
 
     # plot fitted curve
-    params = plot_fit(t_list, amps, ax, fit_func="sine")
+    params = plot_fit(t_list, amps, ax, fit_func="exp_decay")
     ax.set_title("average of %d results" % (reps - remaining_data))
 
     # update figure
@@ -138,9 +123,8 @@ while remaining_data != 0:
 ############################           SAVE RESULTS         ############################
 ########################################################################################
 
-metadata = (
-    f"{reps = }, {f_start = }, {f_stop = }, {f_step = }, {wait_time = }, {rr_ascale = }"
-)
+metadata = f"{reps = }, {qubit_ascale = }, {t_start = }, {t_stop = }, {t_step = }, {wait_time = }, {rr_ascale = }"
+
 filename = f"{datetime.now().strftime('%H-%M-%S')}_{MEAS_NAME}"
 datapath = DATA_FOLDER_PATH / (filename + ".csv")
 imgpath = DATA_FOLDER_PATH / (filename + ".png")

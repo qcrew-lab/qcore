@@ -31,17 +31,17 @@ def IQ_imbalance(gain: float, phase: float) -> list[float]:
 qubit_LO = 5.0175e9
 qubit_IF = -50e6
 
-rr_LO = 8.6041e9
+rr_LO = 8.6036e9
 rr_IF = -50e6
 
-rr_time_of_flight = 224  # must be integer multiple of 4 >= 180
+rr_time_of_flight = 444  # must be integer multiple of 4 >= 180
 
 # NOTE: please copy paste results of mixer tuning in the respective dicts below
 qubit_mixer_offsets = {
-    "I": -0.030612957524135707,
-    "Q": 0.04470508645754309,
-    "G": 0.13341304883360866,
-    "P": -0.056090443208813685,
+    "I": 0.007179423904744908,
+    "Q": -0.006429361237678677,
+    "G": -0.18545837402343757,
+    "P": 0.09413375854492195,
 }
 rr_mixer_offsets = {
     "I": -0.010745931230485443,
@@ -65,7 +65,7 @@ readout_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
 saturation_pulse_len = 15000  # must be an integer multiple of 4 >= 16
 saturation_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
 
-gaussian_pulse_wf_I_samples = gaussian_fn(0.2, 400, 6)  # (amp, sigma, multiple_sigma)
+gaussian_pulse_wf_I_samples = gaussian_fn(0.2, 250, 4)  # (amp, sigma, multiple_sigma)
 gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
 
 ########################################################################################
@@ -73,8 +73,8 @@ gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
 ########################################################################################
 # NOTE: change these accordingly if you change the connections of the OPX outputs/inputs
 
-qubit_ports = {"I": 2, "Q": 1}  # from OPX's point of view, these are analog outputs
-rr_ports = {"I": 3, "Q": 4, "out": 1}  # "out" is analog input from the OPX's POV
+qubit_ports = {"I": 1, "Q": 2}  # from OPX's point of view, these are analog outputs
+rr_ports = {"I": 4, "Q": 3, "out": 1}  # "out" is analog input from the OPX's POV
 
 ########################################################################################
 ###############################           CONFIG         ###############################

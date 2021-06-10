@@ -13,27 +13,17 @@ MEAS_NAME = "rr_spec"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-<<<<<<< HEAD
-reps = 4
-wait_time = 8000  # in clock cycles
-
-# Measurement pulse
-rr = stg.rr
-f_start = -47e6
-f_stop = -43e6
-f_step = 1e6
-=======
 reps = 10000
 wait_time = 12500  # in clock cycles
 
 # Measurement pulse
 rr = stg.rr
-f_start = -60e6
-f_stop = -40e6
-f_step = 0.05e6
->>>>>>> 0fc437f8e36ccebbb8babcb8694ebf12e3c8ef08
+f_start = -54e6
+f_stop = -48e6
+f_step = 0.02e6
 rr_f_list = np.arange(f_start, f_stop, f_step)
-rr_ascale = 0.4
+rr_f_list_len = len(rr_f_list)
+rr_ascale = 0.2
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
@@ -97,8 +87,8 @@ while remaining_data != 0:
     # update data
     N = min(N, remaining_data)  # don't wait for more than there's left
     raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg", "f"])
-    I_avg = np.average(raw_data["I_avg"], axis=0)
-    Q_avg = np.average(raw_data["Q_avg"], axis=0)
+    I_avg = raw_data["I_avg"][-1]
+    Q_avg = raw_data["Q_avg"][-1]
     amps = np.abs(I_avg + 1j * Q_avg)
 
     rr_f = np.average(raw_data["f"], axis=0)  # just to make sure the I and Q measured is for the rr_f stored on the OPX
