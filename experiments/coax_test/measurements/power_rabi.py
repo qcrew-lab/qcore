@@ -18,8 +18,8 @@ wait_time = 12500  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-a_start = -2
-a_stop = 2
+a_start = -1
+a_stop = 1
 a_step = 0.01
 qubit_a_list = np.arange(a_start, a_stop, a_step)
 qubit_f = qubit.int_freq
@@ -106,6 +106,9 @@ while remaining_data != 0:
 
     # update figure
     hdisplay.update(fig)
+
+# please see "qm_get_results.py" in "analysis" package in "codebase" for an attempt
+# to get partial results from QM
 
 ########################################################################################
 ############################           SAVE RESULTS         ############################

@@ -13,24 +13,34 @@ MEAS_NAME = "rr_spec"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 5000
-wait_time = 10000  # in clock cycles
+reps = 3000
+wait_time = 80000  # in clock cycles
 
 # Measurement pulse
 rr = stg.rr
-f_start = -55e6
-f_stop = -40e6
-f_step = 0.02e6
+f_start = -51e6
+f_stop = -48e6
+f_step = 0.01e6
 rr_f_list = np.arange(f_start, f_stop, f_step)
-rr_ascale = 1.0
+rr_ascale = 0.9
 rr_op = 'readout'
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
 # NOTE: The weights must be defined for the chosen measurement operation
 
+# Parameters for optional qubit pulse
+qubit = stg.qubit
+play_qubit = False
+qubit_ascale = 1.0
+qubit_f = int(-48.0e6)  # IF frequency of qubit pulse
+qubit_op = "saturation"  # qubit operation as defined in config
+
+
 with program() as rr_spec:
     n = declare(int)
     f = declare(int)
+    qubit_a = declare(fixed, value=qubit_ascale)
+    qubit_f = declare(int, value= qubit_f)
 
     I = declare(fixed)
     I_stream = declare_stream()
@@ -40,6 +50,9 @@ with program() as rr_spec:
     with for_(n, 0, n < reps, n + 1):  # outer averaging loop
         with for_(f, f_start, f < f_stop, f + f_step):  # inner frequency sweep
             update_frequency(rr.name, f)
+            update_frequency(qubit.name, qubit_f)
+            play(qubit_op * amp(qubit_a), "qubit", condition=play_qubit)
+            align("qubit", "rr")
             measure(
                 rr_op * amp(rr_ascale),
                 rr.name,
@@ -65,8 +78,19 @@ result_handle.wait_for_all_values()
 I_handle = result_handle.get("I_mem")
 Q_handle = result_handle.get("Q_mem")
 results = np.abs(I_handle.fetch_all() + 1j * Q_handle.fetch_all())
+plt.figure(figsize=(10, 8))
 plt.plot(rr_f_list, results)
 
+plt.figure(figsize=(10, 8))
+plt.plot(rr_f_list,without_saturation, label="without_saturation")
+plt.plot(rr_f_list,with_saturation, label="with_saturation")
+plt.legend()
+plt.show()
+
+# from scipy.signal import find_peaks
+# peaks, _ = find_peaks(results, height = 1.75e-5)
+# print("peak is at", rr_f_list[peaks])
+# print("peak is at", results[peaks])
 ########################################################################################
 ############################           SAVE RESULTS         ############################
 ########################################################################################

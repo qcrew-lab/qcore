@@ -15,7 +15,7 @@ MEAS_NAME = "qubit_spec"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 5000
+reps = 8000
 wait_time = 200000  # in clock cycles
 
 # Measurement pulse
