@@ -19,17 +19,17 @@ wait_time = 80000  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-f_start = -50e6
-f_stop = -46e6
-f_step = 0.01e6
+f_start = -49e6
+f_stop = -47e6
+f_step = 0.005e6
 qubit_f_list = np.arange(f_start, f_stop, f_step)
-qubit_ascale = 0.9
-qubit_op = "saturation"  # qubit operation as defined in config
+qubit_ascale = 1.02
+qubit_op = "gaussian"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
 rr_f = rr.int_freq
-rr_ascale = 0.015
+rr_ascale = 0.017
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
@@ -107,7 +107,7 @@ while remaining_data != 0:
     ax.plot(qubit_f_list / 1e6, amps)
 
     # plot fitted curve
-    params = plot_fit(qubit_f_list, amps, ax, fit_func="lorentzian")
+    params = plot_fit(qubit_f_list/1e6, amps, ax, fit_func=None)
     ax.set_title("average of %d results" % (reps - remaining_data))
 
     # update figure

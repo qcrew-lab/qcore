@@ -14,7 +14,7 @@ SAMPLING_RATE = 1e9
 ADC_RESOLUTION = 2**12
 reps = 20000
 wait_time = 20000
-amp_scale = 0.04
+amp_scale = 0.15#0.015
 with program() as tof_calib:
     adc_stream = declare_stream(adc_trace=True)
     n = declare(int)

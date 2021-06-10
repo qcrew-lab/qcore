@@ -16,11 +16,11 @@ reps = 20000
 wait_time = 12500  # in clock cycles, found after rough T1
 
 # readout parameters
-f_start, f_stop, f_step = -51e6, -48.5e6, 0.02e6
+f_start, f_stop, f_step = -50e6, -49e6, 0.015e6
 rr_f_list = np.arange(f_start, f_stop, f_step)
-a_start, a_stop, num_a = 0.01, 2.0, 60
-#rr_ascale = np.linspace(a_start, a_stop, num_a)  # for sweeping measurement power
-rr_ascale = np.concatenate((np.linspace(0.005, 0.025, 21), np.linspace(0.026, 2, 41)))
+a_start, a_stop, num_a = 0.01, 0.02, 60
+rr_ascale = np.linspace(a_start, a_stop, num_a)  # for sweeping measurement power
+#rr_ascale = np.concatenate((np.linspace(0.005, 0.025, 21), np.linspace(0.026, 2, 41)))
 
 # Parameters for optional qubit pulse
 play_qubit = False

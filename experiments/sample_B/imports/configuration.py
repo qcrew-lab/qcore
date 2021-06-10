@@ -34,16 +34,16 @@ cw_pulse_amp = 0.2
 readout_len = 4000
 readout_pulse_amp = 0.2
 
-gaussian_pulse_wf_I_samples = gaussian_fn(0.25, 350, 6)  # (amp, sigma, multiple_sigma)
+gaussian_pulse_wf_I_samples = gaussian_fn(0.25, 300, 6)  # (amp, sigma, multiple_sigma)
 gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
 
-rr_time_of_flight = 1200
+rr_time_of_flight = 1600
 
 rr_LO = int(9.453e9)
-rr_IF = int(-49.3e6)  # int(-49.3e6)  # int(-49.35e6)  # int(-49.51e6)
+rr_IF = int(-49.45e6)  # int(-49.3e6)  # int(-49.35e6)  # int(-49.51e6)
 
 qubit_LO = int(4.1235e9)  # int(4.1286e+9)
-qubit_IF = int(-48.35e6)
+qubit_IF = int(-48.15e6)
 
 rr_mixer_gain = 0.048832416534423814
 rr_mixer_phase = -0.10307483673095706

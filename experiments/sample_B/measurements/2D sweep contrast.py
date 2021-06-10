@@ -4,7 +4,8 @@ from pathlib import Path
 
 freqs = np.arange(-51e6, -48.5e6, 0.02e6)
 len_freqs = len(freqs)
-pows = np.linspace(0.01, 2.0, 60)
+pows = np.concatenate((np.linspace(0.005, 0.025, 21), np.linspace(0.026, 2, 41)))
+#np.linspace(0.01, 2.0, 60) ## check if this is correct
 len_pows = len(pows)
 signal_with = np.empty((len_pows, len_freqs))  # y, x; measured signal with qubit pulse
 signal_without = np.empty((len_pows, len_freqs))  # y, x; without qubit pulse
@@ -36,7 +37,8 @@ for amp in range(len_pows):
 
 
 contrast = np.subtract(signal_with, signal_without)
-plot = plt.pcolormesh(freqs, pows, contrast, shading="auto", cmap="hot")
+
+plot = plt.pcolormesh(freqs, pows, contrast, cmap="terrain")
 plt.xlabel("Readout IF (Hz)")
 plt.ylabel("Readout pulse a_scale")
 plt.title("Contrast")
