@@ -31,7 +31,7 @@ def IQ_imbalance(gain: float, phase: float) -> list[float]:
 qubit_LO = 5.0175e9
 qubit_IF = -50e6
 
-rr_LO = 8.6036e9
+rr_LO = 8.60375e9
 rr_IF = -50e6
 
 rr_time_of_flight = 444  # must be integer multiple of 4 >= 180
@@ -67,6 +67,13 @@ saturation_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
 
 gaussian_pulse_wf_I_samples = gaussian_fn(0.2, 250, 4)  # (amp, sigma, multiple_sigma)
 gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
+
+# Operations
+
+# square pi and pi2 pulses
+sq_pi_len = 588  # must be an integer multiple of 4 >= 16
+sq_pi2_len = 292  # must be an integer multiple of 4 >= 16
+sq_pi_pi2_amp = 0.3444  # must be float in the interval (-0.5, 0.5)
 
 ########################################################################################
 ################################           PORTS         ###############################
@@ -108,6 +115,8 @@ config = {
             "intermediate_frequency": int(qubit_IF),
             "operations": {
                 "CW": "CW",
+                "sqpi": "sqpi",
+                "sqpi2": "sqpi2",
                 "gaussian": "gaussian_pulse",
                 "saturation": "saturation_pulse",
             },
@@ -135,6 +144,16 @@ config = {
             "operation": "control",
             "length": cw_pulse_len,
             "waveforms": {"I": "const_wf", "Q": "zero_wf"},
+        },
+        "sqpi": {
+            "operation": "control",
+            "length": sq_pi_len,
+            "waveforms": {"I": "sq_pi_pi2_wf", "Q": "zero_wf"},
+        },
+        "sqpi2": {
+            "operation": "control",
+            "length": sq_pi2_len,
+            "waveforms": {"I": "sq_pi_pi2_wf", "Q": "zero_wf"},
         },
         "saturation_pulse": {
             "operation": "control",
@@ -177,6 +196,10 @@ config = {
         "readout_wf": {
             "type": "constant",
             "sample": readout_pulse_amp,
+        },
+        "sq_pi_pi2_wf": {
+            "type": "constant",
+            "sample": sq_pi_pi2_amp,
         },
     },
     "digital_waveforms": {"ON": {"samples": [(1, 0)]}},
