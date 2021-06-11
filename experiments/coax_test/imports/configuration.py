@@ -1,5 +1,5 @@
-""" DO NOT DUPLICATE THIS FILE WHILE YOU ARE CONDUCTING THE EXPERIMENT 'COAX_TEST'"""
-"""This file is the one and only place to change parameters between measurement runs"""
+""" DO NOT DUPLICATE THIS FILE WHILE YOU ARE CONDUCTING THE EXPERIMENT 'COAX_TEST'
+This file is the one and only place to change parameters between measurement runs"""
 ########################################################################################
 #############           HELPER FUNCTIONS - DO NOT EDIT THIS SECTION        #############
 ########################################################################################
@@ -26,7 +26,6 @@ def IQ_imbalance(gain: float, phase: float) -> list[float]:
 ########################################################################################
 ##############################           ELEMENTS         ##############################
 ########################################################################################
-# NOTE: you may change these parameters between measurement runs
 
 qubit_LO = 5.0175e9
 qubit_IF = -50e6
@@ -36,14 +35,13 @@ rr_IF = -50e6
 
 rr_time_of_flight = 444  # must be integer multiple of 4 >= 180
 
-# NOTE: please copy paste results of mixer tuning in the respective dicts below
-qubit_mixer_offsets = {
+qubit_mixer_offsets = {  # NOTE: copy paste results of mixer tuning here
     "I": 0.007179423904744908,
     "Q": -0.006429361237678677,
     "G": -0.18545837402343757,
     "P": 0.09413375854492195,
 }
-rr_mixer_offsets = {
+rr_mixer_offsets = {  # NOTE: copy paste results of mixer tuning here
     "I": -0.010745931230485443,
     "Q": 0.0017933552153408532,
     "G": 0.15548596382141114,
@@ -53,8 +51,8 @@ rr_mixer_offsets = {
 ########################################################################################
 ##############################            PULSES          ##############################
 ########################################################################################
-# NOTE: consider changing pulse parameters 'on-the-fly' within a qua script (will be in clock cycles)
-# NOTE: read http://qm-docs.s3.amazonaws.com/v0.90/python/qua/dsl_main.html to know how
+
+################################### ARBITRARY PULSES ###################################
 
 cw_pulse_len = 1000  # must be an integer multiple of 4 >= 16
 cw_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
@@ -68,9 +66,9 @@ saturation_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
 gaussian_pulse_wf_I_samples = gaussian_fn(0.2, 250, 4)  # (amp, sigma, multiple_sigma)
 gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
 
-# Operations
+################################### EXCLUSIVE PULSES ###################################
 
-# square pi and pi2 pulses
+# qubit square pi and pi2 pulses
 sq_pi_len = 588  # must be an integer multiple of 4 >= 16
 sq_pi2_len = 292  # must be an integer multiple of 4 >= 16
 sq_pi_pi2_amp = 0.3444  # must be float in the interval (-0.5, 0.5)
@@ -78,7 +76,6 @@ sq_pi_pi2_amp = 0.3444  # must be float in the interval (-0.5, 0.5)
 ########################################################################################
 ################################           PORTS         ###############################
 ########################################################################################
-# NOTE: change these accordingly if you change the connections of the OPX outputs/inputs
 
 qubit_ports = {"I": 1, "Q": 2}  # from OPX's point of view, these are analog outputs
 rr_ports = {"I": 4, "Q": 3, "out": 1}  # "out" is analog input from the OPX's POV
@@ -86,7 +83,6 @@ rr_ports = {"I": 4, "Q": 3, "out": 1}  # "out" is analog input from the OPX's PO
 ########################################################################################
 ###############################           CONFIG         ###############################
 ########################################################################################
-# NOTE: edit the config only if you want to add new operations, pulses, waveforms
 
 config = {
     "version": 1,
