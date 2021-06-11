@@ -40,7 +40,7 @@ gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
 rr_time_of_flight = 1600
 
 rr_LO = int(9.453e9)
-rr_IF = int(-49.45e6)  # int(-49.3e6)  # int(-49.35e6)  # int(-49.51e6)
+rr_IF = int(-49.5e6)  # int(-49.3e6)  # int(-49.35e6)  # int(-49.51e6)
 
 qubit_LO = int(4.1235e9)  # int(4.1286e+9)
 qubit_IF = int(-48.15e6)
