@@ -13,7 +13,7 @@ MEAS_NAME = "t1"  # used for naming the saved data file
 ########################################################################################
 #h
 # Loop parameters
-reps = 5000
+reps = 10000
 wait_time = 12500  # in multiples of 4ns
 
 # Measurement pulse
