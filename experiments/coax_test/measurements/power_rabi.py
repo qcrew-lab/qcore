@@ -18,12 +18,12 @@ wait_time = 12500  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-a_start = -1
-a_stop = 1
-a_step = 0.01
+a_start = -2
+a_stop = 2
+a_step = 0.05
 qubit_a_list = np.arange(a_start, a_stop, a_step)
 qubit_f = qubit.int_freq
-qubit_op = "gaussian"  # qubit operation as defined in config
+qubit_op = "CW"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
@@ -91,14 +91,21 @@ while remaining_data != 0:
 
     # update data
     N = min(N, remaining_data)  # don't wait for more than there's left
-    raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg"])
+    raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg", 'I', 'Q'])
     I_avg = raw_data["I_avg"][-1]
     Q_avg = raw_data["Q_avg"][-1]
     amps = np.abs(I_avg + 1j * Q_avg)
     remaining_data -= N
 
+    ### Yvonne added this to try
+    I = raw_data["I"]
+    Q = raw_data["Q"]
+    d = np.abs(I + 1j * Q)
+    std_err = np.std(d, axis=0)/np.sqrt(len(d))
+
     # plot averaged data
-    ax.scatter(qubit_a_list, amps, s=5, c="black")
+    #ax.scatter(qubit_a_list, amps, s=5, c="black")
+    ax.errorbar(qubit_a_list, amps, yerr=std_err, fmt='o')
 
     # plot fitted curve
     params = plot_fit(qubit_a_list, amps, ax, fit_func="sine")
