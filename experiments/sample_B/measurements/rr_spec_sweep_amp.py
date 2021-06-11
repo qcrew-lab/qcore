@@ -23,7 +23,7 @@ rr_ascale = np.linspace(a_start, a_stop, num_a)  # for sweeping measurement powe
 #rr_ascale = np.concatenate((np.linspace(0.005, 0.025, 21), np.linspace(0.026, 2, 41)))
 
 # Parameters for optional qubit pulse
-play_qubit = False
+play_qubit = True
 qubit_ascale = 1.0  # found after a power rabi fit
 qubit_op = "gaussian"  # qubit operation as defined in config
 
