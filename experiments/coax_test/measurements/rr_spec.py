@@ -1,33 +1,26 @@
-# import all objects defined in the __init__.py file in the 'imports' folder
-from qcrew.experiments.coax_test.imports import *
+from qcrew.experiments.coax_test.imports import *  #  import all objects from init file
 
-reload(cfg), reload(stg)  # reloads modules before executing the code below
-
-# NOTE: make changes to lo, if, tof, mixer offsets in 'configuration.py'
-# NOTE: make changes to constant pulse amp and pulse duration in the qua script below
+reload(cfg)  # reload config before running the script
+reload(stg)  # reload stage before running the script
 
 MEAS_NAME = "rr_spec"  # used for naming the saved data file
 
 ########################################################################################
 ########################           MEASUREMENT SEQUENCE         ########################
 ########################################################################################
+rr = stg.rr  # reference to the readout mode object
 
-# Loop parameters
-reps = 40000
-wait_time = 12500  # in clock cycles
+reps = 40000  # number of sweep repetitions
 
-# Measurement pulse
-rr = stg.rr
-f_start = -50.2e6
-f_stop = -49.6e6
-f_step = 0.02e6
+# sweep parameters
+wait_time = 12500  # in ns, for readout mode to relax before next repetition
+f_start, f_stop, f_step = -50.2e6, -49.6e6, 0.02e6
 rr_f_list = np.arange(f_start, f_stop, f_step)
 rr_f_list_len = len(rr_f_list)
+
 rr_ascale = 0.2
 rr_op = "readout"
-integW1 = "integW1"  # integration weight for I
-integW2 = "integW2"  # integration weight for Q
-# NOTE: The weights must be defined in configuration.py for the chosen msmt operation
+integW1, integW2 = "integW1", "integW2"  # integration weight for I and Q respectively
 
 with program() as rr_spec:
     n = declare(int)
