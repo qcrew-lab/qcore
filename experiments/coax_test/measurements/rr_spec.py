@@ -13,13 +13,13 @@ MEAS_NAME = "rr_spec"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 10000
+reps = 40000
 wait_time = 12500  # in clock cycles
 
 # Measurement pulse
 rr = stg.rr
-f_start = -54e6
-f_stop = -48e6
+f_start = -50.2e6
+f_stop = -49.6e6
 f_step = 0.02e6
 rr_f_list = np.arange(f_start, f_stop, f_step)
 rr_f_list_len = len(rr_f_list)
@@ -78,7 +78,7 @@ ax = fig.add_subplot(1, 1, 1)
 hdisplay = display.display("", display_id=True)
 raw_data = {}
 result_handles = job.result_handles
-N = 100  # max size of data batch for each refresh, must be integer > 1
+N = 300  # max size of data batch for each refresh, must be integer > 1
 remaining_data = reps
 while remaining_data != 0:
     # clear data

@@ -20,7 +20,7 @@ sa = Sa124(name="sa", serial_number=19184645)
 
 # Define quantum element whose signal will be analyzed and pulse characteristics
 # The quantum element is required to have a CW operation defined.
-q_elem = stg.rr
+q_elem = stg.qubit
 q_elem_name = q_elem.name
 q_elem_IF = q_elem.int_freq
 cw_operation = "CW"  # name of the CW operation as defined in the config file

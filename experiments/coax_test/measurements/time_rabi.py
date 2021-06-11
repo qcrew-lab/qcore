@@ -13,29 +13,29 @@ MEAS_NAME = "time_rabi"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 2000
-wait_time = 8000  # in clock cycles
+reps = 50000
+wait_time = 12500  # in clock cycles
 
 # Measurement pulse
 rr = stg.rr
 rr_f = rr.int_freq
-rr_ascale = 1.0
+rr_ascale = 0.2
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
 # NOTE: The weights must be defined in configuration.py for the chosen msmt operation
 
 # Wait time between two pulses in clock cycles
-t_start = 0
-t_stop = 800
+t_start = 25
+t_stop = 400
 t_step = 1
 t_list = np.arange(t_start, t_stop, t_step)
 
 # Qubit pulse
 qubit = stg.qubit
-qubit_ascale = 1.0
+qubit_ascale = 1.722
 qubit_f = qubit.int_freq  # IF of qubit pulse
-qubit_op = "gaussian"  # qubit operation as defined in config
+qubit_op = "CW"  # qubit operation as defined in config
 
 with program() as time_rabi:
     # Iteration variable
@@ -113,8 +113,8 @@ while remaining_data != 0:
 
     # plot fitted curve
     params = plot_fit(t_list, amps, ax, fit_func="sine")
-    ax.set_title("average of %d results" % (reps - remaining_data))
 
+    ax.set_title("average of %d results" % (reps - remaining_data))
     # update figure
     hdisplay.update(fig)
 
