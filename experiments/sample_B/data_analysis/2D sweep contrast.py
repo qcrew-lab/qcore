@@ -2,10 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-freqs = np.arange(-51e6, -48.5e6, 0.02e6)
+freqs = np.arange(-50e6, -49e6, 0.015e6)
 len_freqs = len(freqs)
-pows = np.concatenate((np.linspace(0.005, 0.025, 21), np.linspace(0.026, 2, 41)))
-#np.linspace(0.01, 2.0, 60) ## check if this is correct
+#pows = np.concatenate((np.linspace(0.005, 0.025, 21), np.linspace(0.026, 2, 41)))
+pows = np.linspace(0.01, 0.02, 60) ## check if this is correct
 len_pows = len(pows)
 signal_with = np.empty((len_pows, len_freqs))  # y, x; measured signal with qubit pulse
 signal_without = np.empty((len_pows, len_freqs))  # y, x; without qubit pulse
@@ -14,14 +14,14 @@ signal_without = np.empty((len_pows, len_freqs))  # y, x; without qubit pulse
 ##Read csv
 filepath_with = (
     Path.cwd()
-    / "data/sample_B/2021-06-09/15-35-11_rr_spec_sweep_amp-Copy-withqubit.csv"
+    / "data/sample_B/2021-06-10/15-12-32_rr_spec_sweep_amp-Copy-withqubit.csv"
 )
 with filepath_with.open() as f:
     lines_with = f.readlines()
 
 filepath_without = (
     Path.cwd()
-    / "data/sample_B/2021-06-09/20-31-58_rr_spec_sweep_amp-Copy-withoutqubit.csv"
+    / "data/sample_B/2021-06-10/13-10-41_rr_spec_sweep_amp-Copy-withoutqubit.csv"
 )
 with filepath_without.open() as f:
     lines_without = f.readlines()
