@@ -1,5 +1,5 @@
 # import all objects defined in the __init__.py file in the 'imports' folder
-from qcrew.experiments.coax_test.imports import *
+from qcrew.experiments.sample_B.imports import *
 
 reload(cfg), reload(stg)  # reloads modules before executing the code below
 
