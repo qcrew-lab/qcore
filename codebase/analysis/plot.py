@@ -7,22 +7,35 @@ from IPython import display
 from qcrew.codebase.analysis import fit
 
 
-def plot_fit(xs, ys, axis, y_errs=None, fit_func="sine"):
+def plot_fit(xs, ys, axis, yerr=None, fit_func="sine"):
 
-    if y_errs:
+    if yerr is not None:
+        # Calculate average error throughout all datapoints
+        avg_yerr = np.average(yerr)
+        error_label = "average error = {:.3e}".format(avg_yerr)
+
         axis.errorbar(
-            xs, ys, yerr=y_errs, marker="s", ls="none", markersize=3, color="b"
+            xs,
+            ys,
+            yerr=yerr,
+            marker="s",
+            ls="none",
+            markersize=3,
+            color="b",
+            label=error_label,
         )
 
     params = fit.do_fit(fit_func, xs, ys)
     fit_ys = fit.eval_fit(fit_func, params, xs)
 
-    axis.plot(
-        xs,
-        fit_ys,
-        color="m",
-        lw=3,
-    )
+    # Convert param values into conveniently formatted strings
+    param_val_list = [
+        key + " = {:.3e}".format(val.value) for key, val in params.items()
+    ]
+    # Join list in a single block of text
+    label_text = "\n".join(param_val_list)
+
+    axis.plot(xs, fit_ys, color="m", lw=3, label=label_text)
 
     return params
 
