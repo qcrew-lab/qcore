@@ -1,22 +1,27 @@
-""" An attempt to write a more QUA idiomatic (PyQUAnic?) measurement script """
+""" Resonator spectroscopy measurement script v3.0 """
+
 from qcrew.experiments.coax_test.imports import *
 
-reload(cfg)
+reload(cfg)  # reload configuration and stage before each measurement run
 reload(stg)
 
+##########################        TOP LEVEL CONSTANTS        ###########################
+
 meas_name = "rr_spec"  # used as the suffix for the saved data file/plot
-rr = stg.rr  # reference to the readout mode object
+start_time = time.perf_counter()  # to get measurement execution time
+
+rr = stg.rr  # reference to the readout resonator object
 
 ######################        SET MEASUREMENT PARAMETERS        ########################
 
 mdata = {  # metadata dict, set measurement parameters here
-    "reps": 20000,  # number of sweep repetitions
-    "wait_time": 12500,  # delay between reps in ns, an integer multiple of 4 >= 16
-    "f_start": -55e6,  # frequency sweep range is set by f_start, f_stop, and f_step
-    "f_stop": -45e6,
-    "f_step": 0.1e6,
+    "reps": 40000,  # number of sweep repetitions
+    "wait_time": 50000,  # delay between reps in ns, an integer multiple of 4 >= 16
+    "f_start": -50.2e6,  # frequency sweep range is set by f_start, f_stop, and f_step
+    "f_stop": -49.6e6,
+    "f_step": 0.02e6,
     "r_ampx": 0.2,  # readout pulse amplitude scale factor
-    "rr_op": "readout",  # readout pulse name
+    "rr_op": "readout",  # readout pulse name as defined in the config
     "fit_func_name": "lorentzian",  # name of the fit function
 }
 
@@ -70,6 +75,8 @@ with program() as rr_spec:
         # compute amps^2 from running averages of I and Q values for live plotting
         (I_avg_st * I_avg_st + Q_avg_st * Q_avg_st).save_all("amps_sq_avg")
 
+#############################        RUN MEASUREMENT        ############################
+
 job = stg.qm.execute(rr_spec)  # run measurement
 print(f"{meas_name} in progress...")  # log message
 handle = job.result_handles
@@ -85,7 +92,7 @@ while handle.is_processing():  # while the measurement is running
 
     num_results = len(handle.amps_sq_avg)  # get result count so far
     amps_sq_avg = handle.amps_sq_avg.fetch(num_results - 1, flat_struct=True)
-    amps = np.sqrt(amps_sq_avg)  # calculate ys
+    amps_avg = np.sqrt(amps_sq_avg)  # calculate ys
 
     # calculate std error from raw data
     amps_sq_raw = handle.amps_sq_raw.fetch_all(flat_struct=True)
@@ -97,7 +104,7 @@ while handle.is_processing():  # while the measurement is running
     plt.cla()  # refresh
     plt.errorbar(
         freqs,
-        amps,
+        amps_avg,
         yerr=mean_std_error,
         ls="none",
         lw=1,
@@ -186,9 +193,11 @@ print(f"Data saved at {datapath_str}")  # log message
 
 imgpath_str = str(filepath) + ".png"
 plt.savefig(imgpath_str, format="png", dpi=600)
-
 print(f"Plot saved at {imgpath_str}")
 
 ####################################          fin        ###############################
+
 print(job.execution_report())
-print("Here's the plot :) \n")
+elapsed_time = time.perf_counter() - start_time
+print(f"Execution time: {str(timedelta(seconds=elapsed_time))}")
+print("\nHere's the final plot :-) \n")
