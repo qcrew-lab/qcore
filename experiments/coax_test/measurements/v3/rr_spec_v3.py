@@ -15,7 +15,7 @@ rr = stg.rr  # reference to the readout resonator object
 ######################        SET MEASUREMENT PARAMETERS        ########################
 
 mdata = {  # metadata dict, set measurement parameters here
-    "reps": 40000,  # number of sweep repetitions
+    "reps": 4000,  # number of sweep repetitions
     "wait_time": 50000,  # delay between reps in ns, an integer multiple of 4 >= 16
     "f_start": -50.2e6,  # frequency sweep range is set by f_start, f_stop, and f_step
     "f_stop": -49.6e6,
@@ -23,6 +23,8 @@ mdata = {  # metadata dict, set measurement parameters here
     "r_ampx": 0.2,  # readout pulse amplitude scale factor
     "rr_op": "readout",  # readout pulse name as defined in the config
     "fit_func_name": "lorentzian",  # name of the fit function
+    "rr_lo_freq": cfg.rr_LO,  # frequency of local oscillator driving rr
+    "rr_int_freq": cfg.rr_IF,  # frequency played by OPX to rr
 }
 
 freqs = np.arange(mdata["f_start"], mdata["f_stop"], mdata["f_step"])  # indep var list
@@ -63,8 +65,8 @@ with program() as rr_spec:
         I_raw_st.save_all("i_raw")
         Q_raw_st.save_all("q_raw")
 
-        # compute amps^2 from raw I and Q values for calculating mean standard error
-        (I_raw_st * I_raw_st + Q_raw_st * Q_raw_st).save_all("amps_sq_raw")
+        # compute signal^2 from raw I and Q values for calculating mean standard error
+        (I_raw_st * I_raw_st + Q_raw_st * Q_raw_st).save_all("signal_sq_raw")
 
         # save final averaged I and Q values
         I_avg_st = I_st.buffer(mdata["sweep_len"]).average()
@@ -72,8 +74,8 @@ with program() as rr_spec:
         I_avg_st.save("i_avg")
         Q_avg_st.save("q_avg")
 
-        # compute amps^2 from running averages of I and Q values for live plotting
-        (I_avg_st * I_avg_st + Q_avg_st * Q_avg_st).save_all("amps_sq_avg")
+        # compute signal^2 from running averages of I and Q values for live plotting
+        (I_avg_st * I_avg_st + Q_avg_st * Q_avg_st).save_all("signal_sq_avg")
 
 #############################        RUN MEASUREMENT        ############################
 
@@ -84,27 +86,27 @@ handle = job.result_handles
 ############################            POST-PROCESSING         ########################
 
 plt.rcParams["figure.figsize"] = (12, 8)  # adjust figure size
-handle.amps_sq_avg.wait_for_values(1)  # wait for at least 1 batch to be processed
+handle.signal_sq_avg.wait_for_values(1)  # wait for at least 1 batch to be processed
 
 while handle.is_processing():  # while the measurement is running
 
     ######################            FETCH PARTIAL RESULTS         ####################
 
-    num_results = len(handle.amps_sq_avg)  # get result count so far
-    amps_sq_avg = handle.amps_sq_avg.fetch(num_results - 1, flat_struct=True)
-    amps_avg = np.sqrt(amps_sq_avg)  # calculate ys
+    num_results = len(handle.signal_sq_avg)  # get result count so far
+    signal_sq_avg = handle.signal_sq_avg.fetch(num_results - 1, flat_struct=True)
+    signal_avg = np.sqrt(signal_sq_avg)  # calculate ys
 
     # calculate std error from raw data
-    amps_sq_raw = handle.amps_sq_raw.fetch_all(flat_struct=True)
-    amps_raw = np.sqrt(amps_sq_raw)
-    mean_std_error = scipy.stats.sem(amps_raw, axis=0)
+    signal_sq_raw = handle.signal_sq_raw.fetch_all(flat_struct=True)
+    signal_raw = np.sqrt(signal_sq_raw)
+    mean_std_error = scipy.stats.sem(signal_raw, axis=0)
 
     ###################            LIVE PLOT PARTIAL RESULTS         ###################
 
     plt.cla()  # refresh
     plt.errorbar(
         freqs,
-        amps_avg,
+        signal_avg,
         yerr=mean_std_error,
         ls="none",
         lw=1,
@@ -117,7 +119,7 @@ while handle.is_processing():  # while the measurement is running
     )
     plt.title(f"Resonator spectroscopy: {num_results} reps")
     plt.xlabel("Frequency (Hz)")
-    plt.ylabel("Amplitude (A.U.)")
+    plt.ylabel("Signal amplitude (A.U.)")
     display.display(plt.gcf())  # display latest batch
     display.clear_output(wait=True)  # clear latest batch after new batch is available
     time.sleep(0.5)  # add a short delay before next plot refresh
@@ -126,18 +128,18 @@ while handle.is_processing():  # while the measurement is running
 
 print(f"{meas_name} completed, fetching results...")  # log message
 
-i_avg = handle.i_avg.fetch_all(flat_struct = True)  # fetch final average I and Q values
-q_avg = handle.q_avg.fetch_all(flat_struct = True)
-amps_avg = np.abs(i_avg + 1j * q_avg)  # calculate final average amps
+i_avg = handle.i_avg.fetch_all(flat_struct=True)  # fetch final average I and Q values
+q_avg = handle.q_avg.fetch_all(flat_struct=True)
+signal_avg = np.abs(i_avg + 1j * q_avg)  # calculate final average signal
 
-i_raw = handle.i_raw.fetch_all(flat_struct = True)  # fetch all raw I & Q values
-q_raw = handle.q_raw.fetch_all(flat_struct = True)
-amps_raw = np.abs(i_raw + 1j * q_raw)  # calculate final raw amps
-mean_std_error = scipy.stats.sem(amps_raw, axis=0)  # for plotting errorbars
+i_raw = handle.i_raw.fetch_all(flat_struct=True)  # fetch all raw I & Q values
+q_raw = handle.q_raw.fetch_all(flat_struct=True)
+signal_raw = np.abs(i_raw + 1j * q_raw)  # calculate final raw signal
+mean_std_error = scipy.stats.sem(signal_raw, axis=0)  # for plotting errorbars
 
 ###############################          FIT RESULTS       #############################
 
-fit_params = fit.do_fit(mdata["fit_func_name"], freqs, amps_avg)  # get fit parameters
+fit_params = fit.do_fit(mdata["fit_func_name"], freqs, signal_avg)  # get fit parameters
 ys_fit = fit.eval_fit(mdata["fit_func_name"], fit_params, freqs)  # get fit values
 for name, value in fit_params.valuesdict().items():  # save fit parameters to metadata
     mdata[f"fit_param_{name}"] = value
@@ -147,7 +149,7 @@ for name, value in fit_params.valuesdict().items():  # save fit parameters to me
 plt.cla()  # refresh plot
 plt.errorbar(  # plot final results as a scatter plot with errorbars
     freqs,
-    amps_avg,
+    signal_avg,
     yerr=mean_std_error,
     ls="none",
     lw=1,
@@ -162,7 +164,7 @@ plt.errorbar(  # plot final results as a scatter plot with errorbars
 plt.plot(freqs, ys_fit, color="m", lw=2, ls="--", label="fit")  # plot fitted values
 plt.title(f"Resonator spectroscopy: {mdata['reps']} reps")
 plt.xlabel("Frequency (Hz)")
-plt.ylabel("Amplitude (A.U.)")
+plt.ylabel("Signal amplitude (A.U.)")
 plt.legend()
 
 ###############################         GENERATE PATHS     #############################
@@ -199,5 +201,5 @@ print(f"Plot saved at {imgpath_str}")
 
 print(job.execution_report())
 elapsed_time = time.perf_counter() - start_time
-print(f"Execution time: {str(timedelta(seconds=elapsed_time))}")
-print("\nHere's the final plot :-) \n")
+print(f"\nExecution time: {str(timedelta(seconds=elapsed_time))}")
+print("Here's the final plot :-) \n")
