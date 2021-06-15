@@ -13,30 +13,31 @@ MEAS_NAME = "t2"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 15000
+reps = 100000
 wait_time = 75000  # in multiples of 4ns
 
 # Measurement pulse
 rr = stg.rr
 rr_f = rr.int_freq
-rr_ascale = 0.0195
+rr_ascale = 0.0175
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
 # NOTE: The weights must be defined in configuration.py for the chosen msmt operation
 
 # Wait time between two pulses in clock cycles
-t_start = 4  # must be integer >= 4, this is in multiples of 4 ns.
-t_stop = 10000
-t_step = 20
+t_start = 1  # must be integer >= 4, this is in multiples of 4 ns.
+t_stop = 1500
+t_step = 5
 t_list = np.arange(t_start, t_stop, t_step)
 
+
 # Qubit pulse
-detuning = 0 #700e3  # 0.05e6  # Qubit drive detuning
+detuning = 0.4e6 #0.7e6  # 700e3  # 0.05e6  # Qubit drive detuning
 qubit = stg.qubit
-qubit_ascale = 1.0 / 2
-qubit_f = qubit.int_freq  - detuning  # IF of qubit pulse
-qubit_op = "gaussian"  # pi/2 qubit operation as defined in config
+qubit_ascale = 2 #-1.1 / 2
+qubit_f = qubit.int_freq - detuning  # IF of qubit pulse
+qubit_op = "pi2"  # pi/2 qubit operation as defined in config
 
 with program() as t2:
     # Iteration variable
@@ -50,8 +51,8 @@ with program() as t2:
     Q = declare(fixed)
 
     # Streams
-    #I_st = declare_stream()
-    #Q_st = declare_stream()
+    I_st = declare_stream()
+    Q_st = declare_stream()
     I_st_avg = declare_stream()
     Q_st_avg = declare_stream()
 
@@ -76,14 +77,14 @@ with program() as t2:
 
             save(I, I_st_avg)
             save(Q, Q_st_avg)
-            # save(I, I_st)
-            # save(Q, Q_st)
+            save(I, I_st)
+            save(Q, Q_st)
 
     with stream_processing():
         I_st_avg.buffer(len(t_list)).average().save_all("I_avg")
         Q_st_avg.buffer(len(t_list)).average().save_all("Q_avg")
-        #I_st.buffer(len(t_list)).save_all("I")
-        #Q_st.buffer(len(t_list)).save_all("Q")
+        I_st.buffer(len(t_list)).save_all("I")
+        Q_st.buffer(len(t_list)).save_all("Q")
 
 
 ########################################################################################
@@ -105,17 +106,23 @@ while remaining_data != 0:
 
     # update data
     N = min(N, remaining_data)  # don't wait for more than there's left
-    raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg"])
+    raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg", "I", "Q"])
     I_avg = raw_data["I_avg"][-1]
     Q_avg = raw_data["Q_avg"][-1]
     amps = np.abs(I_avg + 1j * Q_avg)
+
+    I = raw_data["I"]
+    Q = raw_data["Q"]
+    d = np.abs(I + 1j * Q)
+    std_err = np.std(d, axis=0) / np.sqrt(d.shape[0])
+
     remaining_data -= N
 
     # plot averaged data
-    ax.scatter(t_list, amps, s=4)
+    #ax.scatter(t_list, amps, s=4)
 
     # plot fitted curve
-    params = plot_fit(t_list, amps, ax, fit_func="exp_decay_sine")
+    params = plot_fit(t_list, amps, ax, yerr=std_err, fit_func="exp_decay_sine")
     ax.set_title("average of %d results" % (reps - remaining_data))
 
     # update figure
@@ -130,8 +137,6 @@ metadata = f"{reps = }, {qubit_ascale = }, {t_start = }, {t_stop = }, {t_step = 
 filename = f"{datetime.now().strftime('%H-%M-%S')}_{MEAS_NAME}"
 datapath = DATA_FOLDER_PATH / (filename + ".csv")
 imgpath = DATA_FOLDER_PATH / (filename + ".png")
-
-
 
 
 with datapath.open("w") as f:

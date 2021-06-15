@@ -14,17 +14,17 @@ MEAS_NAME = "power_rabi"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 5000
-wait_time = 100000  # in clock cycles
+reps = 20000
+wait_time = 75000  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-a_start = -1.5
-a_stop = 1.5
-a_step = 0.03
+a_start = -2
+a_stop = 2
+a_step = 0.02
 qubit_a_list = np.arange(a_start, a_stop, a_step)
 qubit_f = qubit.int_freq
-qubit_op = "gaussian"  # qubit operation as defined in config
+qubit_op = "CW"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
@@ -93,17 +93,22 @@ while remaining_data != 0:
 
     # update data
     N = min(N, remaining_data)  # don't wait for more than there's left
-    raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg"])
+    raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg",'I','Q'])
     I_avg = raw_data["I_avg"][-1]
     Q_avg = raw_data["Q_avg"][-1]
     amps = np.abs(I_avg + 1j * Q_avg)
+
+    I = raw_data["I"]
+    Q = raw_data["Q"]
+    d = np.abs(I + 1j * Q)
+    std_err = np.std(d, axis=0) / np.sqrt(d.shape[0])
     remaining_data -= N
 
     # plot averaged data
     ax.plot(qubit_a_list, amps, ls="None", marker="s")
 
     # plot fitted curve
-    params = plot_fit(qubit_a_list, amps, ax, fit_func="sine")
+    params = plot_fit(qubit_a_list, amps, ax, yerr=std_err, fit_func="sine")
     ax.set_title("average of %d results" % (reps - remaining_data))
     # ax.legend(['pi-amp scaling = '% (0.5/params['f0'])])
 

@@ -24,26 +24,29 @@ def IQ_imbalance(g, phi):
 ################
 # CONFIGURATION:
 ################
+pi_pulse_len = 472
+pi2_pulse_len = 236
+pi_pulse_amp = pi2_pulse_amp = 0.25
 
 saturation_pulse_len = 4000
 saturation_pulse_amp = 0.25
 
-cw_pulse_len = 15000
-cw_pulse_amp = 0.2
+cw_pulse_len = 228
+cw_pulse_amp = 0.25
 
 readout_len = 4000
 readout_pulse_amp = 0.2
 
-gaussian_pulse_wf_I_samples = gaussian_fn(0.25, 300, 6)  # (amp, sigma, multiple_sigma)
+gaussian_pulse_wf_I_samples = gaussian_fn(0.25, 140, 6)  # (amp, sigma, multiple_sigma)
 gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
 
 rr_time_of_flight = 1600
 
 rr_LO = int(9.453e9)
-rr_IF = int(-49.5e6)  # int(-49.3e6)  # int(-49.35e6)  # int(-49.51e6)
+rr_IF = int(-49.4e6)  # int(-49.5e6) # int(-49.3e6)  # int(-49.35e6)  # int(-49.51e6)
 
 qubit_LO = int(4.1235e9)  # int(4.1286e+9)
-qubit_IF = int(-48.15e6)
+qubit_IF = int(-47.55e6)  # int(-47.95e6)
 
 rr_mixer_gain = 0.048832416534423814
 rr_mixer_phase = -0.10307483673095706
@@ -104,6 +107,8 @@ config = {
                 "CW": "CW",
                 "saturation": "saturation_pulse",
                 "gaussian": "gaussian_pulse",
+                "pi": "pi_pulse",
+                "pi2": "pi2_pulse",
             },
         },
         "rr": {
@@ -130,6 +135,19 @@ config = {
             "length": cw_pulse_len,
             "waveforms": {"I": "const_wf", "Q": "zero_wf"},
         },
+        "pi_pulse": {
+            "operation": "control",
+            "length": pi_pulse_len,
+            "waveforms": {"I": "pi_wf", "Q": "zero_wf"},
+        },
+
+        "pi2_pulse": {
+            "operation": "control",
+            "length": pi2_pulse_len,
+            "waveforms": {"I": "pi2_wf", "Q": "zero_wf"},
+        },
+
+
         "saturation_pulse": {
             "operation": "control",
             "length": saturation_pulse_len,  # 15000,  # several T1s
@@ -162,6 +180,15 @@ config = {
             "type": "constant",
             "sample": cw_pulse_amp,
         },
+        "pi_wf": {
+            "type": "constant",
+            "sample": pi_pulse_amp,
+        },
+        "pi2_wf": {
+            "type": "constant",
+            "sample": pi2_pulse_amp,
+        },
+
         "zero_wf": {
             "type": "constant",
             "sample": 0.0,

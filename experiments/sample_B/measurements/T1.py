@@ -13,13 +13,13 @@ MEAS_NAME = "t1"  # used for naming the saved data file
 ########################################################################################
 #h
 # Loop parameters
-reps = 10000
-wait_time = 12500  # in multiples of 4ns
+reps = 30000
+wait_time = 75000  # in multiples of 4ns
 
 # Measurement pulse
 rr = stg.rr
 rr_f = rr.int_freq
-rr_ascale = 0.0195
+rr_ascale = 0.0175
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
@@ -27,15 +27,15 @@ integW2 = "integW2"  # integration weight for Q
 
 # Wait time between two pulses in clock cycles
 t_start = 4  # must be integer >= 4, this is in multiples of 4 ns.
-t_stop = 100000 
-t_step = 300
+t_stop = 50000 
+t_step = 200
 t_list = np.arange(t_start, t_stop, t_step)
 
 # Qubit pulse
 qubit = stg.qubit
-qubit_ascale = 1.0  # based on power rabi fit
+qubit_ascale = 2  # based on power rabi fit
 qubit_f = qubit.int_freq  # IF of qubit pulse
-qubit_op = "gaussian"  # qubit operation as defined in config
+qubit_op = "pi"  # qubit operation as defined in config
 
 with program() as t1:
     # Iteration variable
