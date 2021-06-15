@@ -13,14 +13,14 @@ MEAS_NAME = "power_rabi"  # used for naming the saved data file
 ########################################################################################
 # hello
 # Loop parameters
-reps = 100000
+reps = 10000
 wait_time = 12500  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
 a_start = -2
 a_stop = 2
-a_step = 0.05
+a_step = 0.1
 qubit_a_list = np.arange(a_start, a_stop, a_step)
 qubit_f = qubit.int_freq
 qubit_op = "CW"  # qubit operation as defined in config
