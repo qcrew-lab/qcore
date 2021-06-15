@@ -3,7 +3,7 @@
 # 1. living ploting can work, no error reported 
 #   
 # 2. the structure of hdf5 hasn't been tested
-# 3. fit curve does not work 
+# 3. fit curve does not work
 
 from qcrew.experiments.sample_B.imports import *
 
