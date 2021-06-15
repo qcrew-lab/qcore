@@ -1,7 +1,13 @@
-""" Resonator spectroscopy measurement script v3.0 """
+# Based on Atharv's verson 3 script, adopt the hdf5 database
+# Only simply test this script
+# 1. living ploting can work, no error reported 
+#   
+# 2. the structure of hdf5 hasn't been tested
+# 3. fit curve does not work 
 
-from qcrew.experiments.coax_test.imports import *
+from qcrew.experiments.sample_B.imports import *
 
+import time
 
 from qcrew.experiments.sample_B.imports import *
 
@@ -12,20 +18,20 @@ import qcodes as qc
 import qcodes.utils.validators as vals
 
 
-from qcrew.database.experiment import load_or_create_experiment, create_experiment
-from qcrew.database.dataset_hdf5 import *
-from qcrew.database.measurement import Measurement
-from qcrew.database.database import initialise_today_database_at
+from qcrew.codebase.database.experiment import load_or_create_experiment, create_experiment
+from qcrew.codebase.database.dataset_hdf5 import *
+from qcrew.codebase.database.measurement import Measurement
+from qcrew.codebase.database.database import initialise_today_database_at
 from pathlib import Path
 
 reload(cfg)  # reload configuration and stage before each measurement run
 reload(stg)
 
 ############################      
-# TOP LEVEL CONSTANTS        
+# TOP LEVEL CONSTANTS     
 ############################
-DATABASE_NAME = "test_database"
-DATAPATH_PATH = Path.cwd()
+DATABASE_NAME = "sample_B_database"
+DATAPATH_PATH = Path.cwd() / 'data'
 EXP_NAME = "rr_spec"  
 SAMPLE_NAME = "sample_B"
 rr = stg.rr  
@@ -60,10 +66,11 @@ RR_LO = cfg.rr_LO
 RR_OPERATION = "readout"
 INTEG_WEIGHT1 = "integW1"
 INTEG_WEIGHT2 = "integW2"
-f_vals = np.arange(F_START,F_STOP. STEP)
+f_vals = np.arange(F_START,F_STOP, F_STEP)
 
 n_points = Parameter("n_points", set_cmd=None, vals=vals.Ints())
-n_points.set(len(f_vals))
+sweep_points = len(f_vals)
+n_points.set(sweep_points)
 
 f = Parameter("f", get_cmd=None, vals=vals.Arrays(shape=(n_points,)))
 reps = Parameter("reps", get_cmd=None)
@@ -152,14 +159,14 @@ with program() as rr_spec:
 
     with stream_processing():
         # save all raw I and Q values
-        I_raw_st = I_st.buffer(n_points)
-        Q_raw_st = Q_st.buffer(n_points)
+        I_raw_st = I_st.buffer(sweep_points)
+        Q_raw_st = Q_st.buffer(sweep_points)
         I_raw_st.save_all("I_raw")
         Q_raw_st.save_all("Q_raw")
    
         # save final averaged I and Q values
-        I_avg_st = I_st.buffer(n_points).average()
-        Q_avg_st = Q_st.buffer(n_points).average()
+        I_avg_st = I_st.buffer(sweep_points).average()
+        Q_avg_st = Q_st.buffer(sweep_points).average()
         I_avg_st.save("I_avg")
         Q_avg_st.save("Q_avg")
         I_avg_st.save_all("I_avg_raw")
@@ -183,7 +190,7 @@ with meas.run() as datasaver:
     
     #############################        RUN MEASUREMENT        ############################
     job = stg.qm.execute(rr_spec)  # run measurement
-    print(f"{exp_name} in progress...")  # log message
+    print(f"{EXP_NAME} in progress...")  # log message
     handle = job.result_handles
 
     ############################            POST-PROCESSING         ########################
@@ -213,7 +220,7 @@ with meas.run() as datasaver:
         # same as: num_so_far = len(result_I_raw)  # get result count so far
         
     
-        if (num_so_far - num_have_got > 0): 
+        if (num_so_far - num_have_got > 0) and num_so_far>1: 
             sliced_result_I_raw = result_I_raw.fetch(slice(num_have_got+1, num_so_far), flat_struct=True)
             sliced_result_Q_raw = result_Q_raw.fetch(slice(num_have_got+1, num_so_far), flat_struct=True)
             sliced_result_I_avg_raw = result_I_avg_raw.fetch(slice(num_have_got+1, num_so_far), flat_struct=True)
@@ -278,7 +285,7 @@ with meas.run() as datasaver:
     filename = EXP_NAME + "_" + SAMPLE_NAME + "_run" + str(dataset.run_id) + ".png"
     full_path = Path(dataset.filename) / filename
     plt.savefig(full_path, format="png", dpi=600)
-    print(f"Plot saved at {imgpath_str}")
+    print(f"Plot saved at {full_path}")
 
 
 ####################################          fin        ###############################

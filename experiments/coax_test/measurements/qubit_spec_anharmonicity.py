@@ -20,11 +20,11 @@ wait_time = 200000  # in clock cycles
 
 # Measurement pulse
 update_rr_if = True
-rr_if = -49.5e+6
+rr_if = int(-49.4e6) 
 rr_if = int(rr_if)
 rr = stg.rr
 
-rr_ascale = 0.07
+rr_ascale = 0.0175
 rr_op = 'readout'
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
@@ -32,7 +32,7 @@ integW2 = "integW2"  # integration weight for Q
 
 # Parameters for optional qubit pulse
 play_qubit = True
-qubit_ascale = 1.5
+qubit_ascale = 2
 # qubit_f = -50e+6  # IF frequency of qubit pulse
 qubit_op = "saturation"  # qubit operation as defined in config
 f_start = -50e+6

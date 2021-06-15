@@ -1,5 +1,5 @@
 from collections.abc import Sized
-from database import get_DB_location, connect
+from .database import get_DB_location, connect
 from sys import prefix
 from typing import Optional, List, Any
 import logging
@@ -7,8 +7,8 @@ from numpy import split
 
 import qcodes
 
-from hdf5_helper import DatabaseFile
-from dataset_hdf5 import*
+from .hdf5_helper import DatabaseFile
+from .dataset_hdf5 import*
 
 log = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class Experiment(Sized):
               to the DB file specified in the config is made
         """
 
-        # create connection to the database 
+        # create connection to the database
         if conn is None: 
             self.conn = DatabaseFile(name, data_path)
         elif conn is not None: 

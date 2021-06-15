@@ -6,14 +6,14 @@ database version and possibly perform database upgrades.
 import io
 import time
 import os
-from dataset_hdf5 import Connection
+from .dataset_hdf5 import Connection
 from contextlib import contextmanager
 from os.path import expanduser, normpath
 from typing import Union, Iterator, Tuple, Optional
 import qcodes as qc
 
 from pathlib import Path
-from hdf5_helper import DateTimeGenerator, DatabaseFile, validate
+from .hdf5_helper import DateTimeGenerator, DatabaseFile, validate
 
 def connect(name: Union[str, Path], debug: bool = False,
             ) -> Connection:
