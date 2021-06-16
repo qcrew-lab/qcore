@@ -28,9 +28,9 @@ def IQ_imbalance(gain: float, phase: float) -> list[float]:
 ########################################################################################
 
 qubit_LO = 4.7775e9
-qubit_IF = -46e6
+qubit_IF = -50e6
 
-rr_LO = 8.60375e9
+rr_LO = 8.60385e9
 rr_IF = -50e6
 
 rr_time_of_flight = 444  # must be integer multiple of 4 >= 180
@@ -63,7 +63,7 @@ readout_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
 saturation_pulse_len = 15000  # must be an integer multiple of 4 >= 16
 saturation_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
 
-gaussian_pulse_wf_I_samples = gaussian_fn(0.2, 250, 4)  # (amp, sigma, multiple_sigma)
+gaussian_pulse_wf_I_samples = gaussian_fn(0.2, 175, 4)  # (amp, sigma, multiple_sigma)
 gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
 
 ################################### EXCLUSIVE PULSES ###################################
@@ -72,6 +72,12 @@ gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
 sq_pi_len = 588  # must be an integer multiple of 4 >= 16
 sq_pi2_len = 292  # must be an integer multiple of 4 >= 16
 sq_pi_pi2_amp = 0.3444  # must be float in the interval (-0.5, 0.5)
+
+# qubit gaussian pi and pi2 pulses
+gauss_pi_samples = gaussian_fn(0.2 * 1.9164, 175, 4)  # (amp, sigma, multiple_sigma)
+gauss_pi_len = len(gauss_pi_samples)
+gauss_pi2_samples = gaussian_fn(0.2 * 1.877, 90, 4)  # (amp, sigma, multiple_sigma)
+gauss_pi2_len = len(gauss_pi2_samples)
 
 ########################################################################################
 ################################           PORTS         ###############################
@@ -111,6 +117,8 @@ config = {
             "intermediate_frequency": int(qubit_IF),
             "operations": {
                 "CW": "CW",
+                "pi": "pi",
+                "pi2": "pi2",
                 "sqpi": "sqpi",
                 "sqpi2": "sqpi2",
                 "gaussian": "gaussian_pulse",
@@ -140,6 +148,16 @@ config = {
             "operation": "control",
             "length": cw_pulse_len,
             "waveforms": {"I": "const_wf", "Q": "zero_wf"},
+        },
+        "pi": {
+            "operation": "control",
+            "length": gauss_pi_len,
+            "waveforms": {"I": "gauss_pi_wf", "Q": "zero_wf"},
+        },
+        "pi2": {
+            "operation": "control",
+            "length": gauss_pi2_len,
+            "waveforms": {"I": "gauss_pi2_wf", "Q": "zero_wf"},
         },
         "sqpi": {
             "operation": "control",
@@ -192,6 +210,14 @@ config = {
         "readout_wf": {
             "type": "constant",
             "sample": readout_pulse_amp,
+        },
+        "gauss_pi_wf": {
+            "type": "arbitrary",
+            "samples": gauss_pi_samples,
+        },
+        "gauss_pi2_wf": {
+            "type": "arbitrary",
+            "samples": gauss_pi2_samples,
         },
         "sq_pi_pi2_wf": {
             "type": "constant",
