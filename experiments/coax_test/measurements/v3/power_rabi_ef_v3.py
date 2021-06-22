@@ -1,4 +1,4 @@
-""" Resonator spectroscopy measurement script v3.0 """
+""" Power Rabi (E->F) measurement script v3.0 """
 
 from qcrew.experiments.coax_test.imports import *
 
@@ -7,44 +7,57 @@ reload(stg)
 
 ##########################        TOP LEVEL CONSTANTS        ###########################
 
-meas_name = "rr_spec"  # used as the suffix for the saved data file/plot
+meas_name = "power_rabi_ef"  # used as the suffix for the saved data file/plot
 start_time = time.perf_counter()  # to get measurement execution time
 
-rr = stg.rr  # reference to the readout resonator object
+rr = stg.rr  # reference to the readout mode object
+qubit = stg.qubit  # reference to the qubit object
 
 ######################        SET MEASUREMENT PARAMETERS        ########################
 
 mdata = {  # metadata dict, set measurement parameters here
-    "reps": 4000,  # number of sweep repetitions
+    "reps": 100000,  # number of sweep repetitions
     "wait_time": 50000,  # delay between reps in ns, an integer multiple of 4 >= 16
-    "f_start": -50.2e6,  # frequency sweep range is set by f_start, f_stop, and f_step
-    "f_stop": -49.6e6,
-    "f_step": 0.02e6,
+    "a_start": -2,  # amplitude sweep range is set by a_start, a_stop, and a_step
+    "a_stop": 2,
+    "a_step": 0.025,
+    "qubit_ef_op": "saturation",  # qubit pulse name as defined in the config
+    "q_ge_if": int(190e6),  # frequency played by OPX to qubit to induce g->e
+    "q_ge_ampx": 1.0,  # qubit g->e pulse amplitude scale factor
+    "qubit_ge_op": "pi",  # qubit g->e pulse name as defined in the config
     "r_ampx": 0.2,  # readout pulse amplitude scale factor
-    "rr_op": "readout",  # readout pulse name as defined in the config
-    "fit_func_name": "lorentzian",  # name of the fit function
-    "rr_lo_freq": cfg.rr_LO,  # frequency of local oscillator driving rr
+    "rr_op": "readout",  # readout pulse name
+    "fit_func_name": "sine",  # name of the fit function
+    "rr_lo_freq": cfg.rr_LO,  # frequency of the local oscillator driving rr
     "rr_int_freq": cfg.rr_IF,  # frequency played by OPX to rr
+    "qubit_lo_freq": cfg.qubit_LO,  # frequency of local oscillator driving qubit
+    "qubit_int_freq": int(cfg.qubit_IF),  # frequency played by OPX to qubit
 }
 
-freqs = np.arange(mdata["f_start"], mdata["f_stop"], mdata["f_step"])  # indep var list
-mdata["sweep_len"] = len(freqs)  # add sweep length to metadata
+ampxs = np.arange(mdata["a_start"], mdata["a_stop"], mdata["a_step"])  # indep var list
+mdata["sweep_len"] = len(ampxs)  # add sweep length to metadata
 
-with program() as rr_spec:
+with program() as power_rabi_ef:
 
     #####################        QUA VARIABLE DECLARATIONS        ######################
 
     n = declare(int)  # averaging loop variable
-    f = declare(int)  # frequency sweep variable
+    a = declare(fixed)  # amplitude scale factor sweep variable
 
     I, Q = declare(fixed), declare(fixed)  # result variables
     I_st, Q_st = declare_stream(), declare_stream()  # to save result variables
 
     #######################        MEASUREMENT SEQUENCE        #########################
 
-    with for_(n, 0, n < mdata["reps"], n + 1):  # outer averaging loop, inner freq sweep
-        with for_(f, mdata["f_start"], f < mdata["f_stop"], f + mdata["f_step"]):
-            update_frequency(rr.name, f)
+    with for_(n, 0, n < mdata["reps"], n + 1):  # outer averaging loop, inner ampx sweep
+        with for_(a, mdata["a_start"], a < mdata["a_stop"], a + mdata["a_step"]):
+            update_frequency(qubit.name, mdata["q_ge_if"])
+            play(mdata["qubit_ge_op"] * amp(mdata["q_ge_ampx"]), qubit.name)  # G->E
+            update_frequency(qubit.name, mdata["qubit_int_freq"])
+            play(mdata["qubit_ef_op"] * amp(a), qubit.name)
+            update_frequency(qubit.name, mdata["q_ge_if"])
+            play(mdata["qubit_ge_op"] * amp(mdata["q_ge_ampx"]), qubit.name)  # E->G
+            align(qubit.name, rr.name)
             measure(
                 mdata["rr_op"] * amp(mdata["r_ampx"]),
                 rr.name,
@@ -52,7 +65,7 @@ with program() as rr_spec:
                 demod.full("integW1", I),
                 demod.full("integW2", Q),
             )
-            wait(int(mdata["wait_time"] // 4), rr.name)
+            wait(int(mdata["wait_time"] // 4), qubit.name)
             save(I, I_st)
             save(Q, Q_st)
 
@@ -79,7 +92,7 @@ with program() as rr_spec:
 
 #############################        RUN MEASUREMENT        ############################
 
-job = stg.qm.execute(rr_spec)  # run measurement
+job = stg.qm.execute(power_rabi_ef)  # run measurement
 print(f"{meas_name} in progress...")  # log message
 handle = job.result_handles
 
@@ -88,8 +101,7 @@ handle = job.result_handles
 plt.rcParams["figure.figsize"] = (12, 8)  # adjust figure size
 handle.signal_sq_avg.wait_for_values(1)  # wait for at least 1 batch to be processed
 
-num_results = 0  # number of repetitions done so far
-while num_results != mdata["reps"]:  # do until all results are processed
+while handle.is_processing():  # while the measurement is running
 
     ######################            FETCH PARTIAL RESULTS         ####################
 
@@ -106,7 +118,7 @@ while num_results != mdata["reps"]:  # do until all results are processed
 
     plt.cla()  # refresh
     plt.errorbar(
-        freqs,
+        ampxs,
         signal_avg,
         yerr=mean_std_error,
         ls="none",
@@ -118,8 +130,8 @@ while num_results != mdata["reps"]:  # do until all results are processed
         mec="black",
         fillstyle="none",
     )
-    plt.title(f"Resonator spectroscopy: {num_results} reps")
-    plt.xlabel("Frequency (Hz)")
+    plt.title(f"Power Rabi (E->F): {num_results} reps")
+    plt.xlabel("Amplitude scale factor")
     plt.ylabel("Signal amplitude (A.U.)")
     display.display(plt.gcf())  # display latest batch
     display.clear_output(wait=True)  # clear latest batch after new batch is available
@@ -127,21 +139,21 @@ while num_results != mdata["reps"]:  # do until all results are processed
 
 ###########################          FETCH FINAL RESULTS       #########################
 
-print(f"{meas_name} completed, saving data...")  # log message
+print(f"{meas_name} completed, fetching results...")  # log message
 
-i_avg = handle.i_avg.fetch_all(flat_struct=True)  # fetch final average I and Q values
-q_avg = handle.q_avg.fetch_all(flat_struct=True)
+i_avg = handle.i_avg.fetch_all(flat_struct = True)  # fetch final average I and Q values
+q_avg = handle.q_avg.fetch_all(flat_struct = True)
 signal_avg = np.abs(i_avg + 1j * q_avg)  # calculate final average signal
 
-i_raw = handle.i_raw.fetch_all(flat_struct=True)  # fetch all raw I & Q values
-q_raw = handle.q_raw.fetch_all(flat_struct=True)
+i_raw = handle.i_raw.fetch_all(flat_struct = True)  # fetch all raw I & Q values
+q_raw = handle.q_raw.fetch_all(flat_struct = True)
 signal_raw = np.abs(i_raw + 1j * q_raw)  # calculate final raw signal
 mean_std_error = scipy.stats.sem(signal_raw, axis=0)  # for plotting errorbars
 
 ###############################          FIT RESULTS       #############################
 
-fit_params = fit.do_fit(mdata["fit_func_name"], freqs, signal_avg)  # get fit parameters
-ys_fit = fit.eval_fit(mdata["fit_func_name"], fit_params, freqs)  # get fit values
+fit_params = fit.do_fit(mdata["fit_func_name"], ampxs, signal_avg)  # get fit parameters
+ys_fit = fit.eval_fit(mdata["fit_func_name"], fit_params, ampxs)  # get fit values
 for name, value in fit_params.valuesdict().items():  # save fit parameters to metadata
     mdata[f"fit_param_{name}"] = value
 
@@ -149,7 +161,7 @@ for name, value in fit_params.valuesdict().items():  # save fit parameters to me
 
 plt.cla()  # refresh plot
 plt.errorbar(  # plot final results as a scatter plot with errorbars
-    freqs,
+    ampxs,
     signal_avg,
     yerr=mean_std_error,
     ls="none",
@@ -162,9 +174,9 @@ plt.errorbar(  # plot final results as a scatter plot with errorbars
     label="data",
     fillstyle="none",
 )
-plt.plot(freqs, ys_fit, color="m", lw=2, ls="--", label="fit")  # plot fitted values
-plt.title(f"Resonator spectroscopy: {mdata['reps']} reps")
-plt.xlabel("Frequency (Hz)")
+plt.plot(ampxs, ys_fit, color="m", lw=2, label="fit")  # plot fitted values
+plt.title(f"Power Rabi (E->F): {mdata['reps']} reps")
+plt.xlabel("Amplitude scale factor")
 plt.ylabel("Signal amplitude (A.U.)")
 plt.legend()
 
@@ -181,7 +193,7 @@ print(f"Fetched {meas_name} results, saving data...")  # log message
 
 datapath_str = str(filepath) + ".hdf5"
 with h5py.File(datapath_str, "a") as file:  # save to hdf5 file
-    file.create_dataset("freqs", data=freqs)  # save frequency sweep values
+    file.create_dataset("ampxs", data=ampxs)  # save frequency sweep values
     file.create_dataset("i_raw", data=i_raw)  # save all raw I values
     file.create_dataset("q_raw", data=q_raw)  # save all raw Q values
     file.create_dataset("i_avg", data=i_raw)  # save final average I values

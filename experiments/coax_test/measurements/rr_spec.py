@@ -10,11 +10,11 @@ MEAS_NAME = "rr_spec"  # used for naming the saved data file
 ########################################################################################
 rr = stg.rr  # reference to the readout mode object
 
-reps = 40000  # number of sweep repetitions
+reps = 70000  # number of sweep repetitions
 
 # sweep parameters
-wait_time = 12500  # in clock cycles, for readout mode to relax before next repetition
-f_start, f_stop, f_step = -55e6, -45e6, 0.02e6
+wait_time = 8000  # in clock cycles, for readout mode to relax before next repetition
+f_start, f_stop, f_step = -54e6, -46e6, 0.04e6
 rr_f_list = np.arange(f_start, f_stop, f_step)
 rr_f_list_len = len(rr_f_list)
 
@@ -71,7 +71,7 @@ ax = fig.add_subplot(1, 1, 1)
 hdisplay = display.display("", display_id=True)
 raw_data = {}
 result_handles = job.result_handles
-N = 100  # max size of data batch for each refresh, must be integer > 1
+N = 200  # max size of data batch for each refresh, must be integer > 1
 remaining_data = reps
 while remaining_data != 0:
     # clear data

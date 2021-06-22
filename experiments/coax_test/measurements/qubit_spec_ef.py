@@ -6,53 +6,73 @@ reload(cfg), reload(stg)  # reloads modules before executing the code below
 # NOTE: make changes to lo, if, tof, mixer offsets in 'configuration.py'
 # NOTE: make changes to constant pulse amp and pulse duration in the qua script below
 
-MEAS_NAME = "power_rabi"  # used for naming the saved data file
+MEAS_NAME = "qubit_spec_ef"  # used for naming the saved data file
 
 ########################################################################################
 ########################           MEASUREMENT SEQUENCE         ########################
 ########################################################################################
-# hello
+
 # Loop parameters
-reps = 100000
+reps = 160000
 wait_time = 12500  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-a_start = -2.0
-a_stop = 2.0
-a_step = 0.05
-qubit_a_list = np.arange(a_start, a_stop, a_step)
-qubit_f = qubit.int_freq
-qubit_op = "pi"  # qubit operation as defined in config
+# g to e Preparation pulse
+qubit_prep_freq = 190e6
+qubit_prep_a = 1.00
+qubit_prep_op = "gaussian"
+# e to f probe pulse
+f_start = -45.5e6
+f_stop = -44.5e6
+f_step = 0.01e6
+qubit_f_list = np.arange(f_start, f_stop, f_step)
+qubit_ascale = 1.7
+qubit_op = "CW"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
 rr_f = rr.int_freq
 rr_ascale = 0.2
 rr_op = "readout"
-integW1 = "integW1"  # integration weight for I
-integW2 = "integW2"  # integration weight for Q
+integW1, integW2 = "integW1", "integW2"  # integration weights for I and Q
+
 # NOTE: The weights must be defined in configuration.py for the chosen msmt operation
-print(qubit_f)
 
-with program() as power_rabi:
+with program() as qubit_spec:
+    # Iteration variable
     n = declare(int)
-    a = declare(fixed)
 
+    # Spectroscopy loop variable
+    qu_freq = declare(int)
+
+    # Outputs
     I = declare(fixed)
     Q = declare(fixed)
+
+    # Streams
     I_st = declare_stream()
     Q_st = declare_stream()
     I_st_avg = declare_stream()
     Q_st_avg = declare_stream()
 
     update_frequency(rr.name, rr_f)
-    update_frequency(qubit.name, qubit_f)
 
     with for_(n, 0, n < reps, n + 1):
-        with for_(a, a_start, a < a_stop, a + a_step):
+        with for_(qu_freq, f_start, qu_freq < f_stop, qu_freq + f_step):
 
-            play(qubit_op * amp(a), qubit.name)
+            # g to e pulse
+            update_frequency(qubit.name, qubit_prep_freq)
+            play(qubit_prep_op * amp(qubit_prep_a), qubit.name)
+
+            # e to f probe pulse
+            update_frequency(qubit.name, qu_freq)
+            play(qubit_op * amp(qubit_ascale), qubit.name)
+
+            # e to g pulse
+            update_frequency(qubit.name, qubit_prep_freq)
+            play(qubit_prep_op * amp(qubit_prep_a), qubit.name)
+
             align(qubit.name, rr.name)
             measure(
                 rr_op * amp(rr_ascale),
@@ -68,23 +88,23 @@ with program() as power_rabi:
             save(Q, Q_st)
 
     with stream_processing():
-        I_st_avg.buffer(len(qubit_a_list)).average().save_all("I_avg")
-        Q_st_avg.buffer(len(qubit_a_list)).average().save_all("Q_avg")
-        I_st.buffer(len(qubit_a_list)).save_all("I")
-        Q_st.buffer(len(qubit_a_list)).save_all("Q")
+        I_st_avg.buffer(len(qubit_f_list)).average().save_all("I_avg")
+        Q_st_avg.buffer(len(qubit_f_list)).average().save_all("Q_avg")
+        I_st.buffer(len(qubit_f_list)).save_all("I")
+        Q_st.buffer(len(qubit_f_list)).save_all("Q")
 
 ########################################################################################
 ############################           GET RESULTS         #############################
 ########################################################################################
 
-job = stg.qm.execute(power_rabi)
+job = stg.qm.execute(qubit_spec)
 
 fig = plt.figure()
 ax = fig.add_subplot(1, 1, 1)
 hdisplay = display.display("", display_id=True)
 raw_data = {}
 result_handles = job.result_handles
-N = 500  # Maximum size of data batch for each refresh
+N = 300  # Maximum size of data batch for each refresh
 remaining_data = reps
 while remaining_data != 0:
     # clear data from plot
@@ -105,7 +125,7 @@ while remaining_data != 0:
     remaining_data -= N
 
     # plot fitted curve with errorbars
-    params = plot_fit(qubit_a_list, amps_avg, ax, yerr=std_err, fit_func="sine")
+    params = plot_fit(qubit_f_list, amps_avg, ax, yerr=std_err, fit_func="lorentzian")
 
     # customize figure
     ax.set_title("average of %d results" % (reps - remaining_data))
@@ -114,24 +134,20 @@ while remaining_data != 0:
     # update figure
     hdisplay.update(fig)
 
-# please see "qm_get_results.py" in "analysis" package in "codebase" for an attempt
-# to get partial results from QM
 
 ########################################################################################
 ############################           SAVE RESULTS         ############################
 ########################################################################################
 
-metadata = f"{reps = }, {a_start = }, {a_stop = }, {a_step = }, {wait_time = }, \
-      {qubit_f = }, {qubit_op = }, {rr_f = }, {rr_ascale = }, {rr_op = }"
+metadata = f"{reps = }, {f_start = }, {f_stop = }, {f_step = }, {wait_time = }, \
+      {qubit_ascale = }, {qubit_op = }, {qubit_prep_op = }, {qubit_prep_a = }, {qubit_prep_freq = }, {rr_f = }, {rr_ascale = }, {rr_op = }"
 filename = f"{datetime.now().strftime('%H-%M-%S')}_{MEAS_NAME}"
 datapath = DATA_FOLDER_PATH / (filename + ".csv")
 imgpath = DATA_FOLDER_PATH / (filename + ".png")
-print(datapath)
-print(imgpath)
+
 with datapath.open("w") as f:
     f.write(metadata)
-    np.savetxt(datapath, [qubit_a_list, amps_avg], delimiter=",")
-
+    np.savetxt(datapath, [qubit_f_list, amps_avg], delimiter=",")
 plt.savefig(imgpath)
 
 ########################################################################################

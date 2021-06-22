@@ -32,7 +32,7 @@ mixer_qubit = QuantumElement(
 qubit = QuantumElement(
     name="qubit", lo_freq=qubit_LO, int_freq=qubit_IF, mixer=mixer_qubit
 )
-lb_qubit = LabBrick(name="lb_qubit", serial_number=25331, frequency=qubit_LO, power=13)
+lb_qubit = LabBrick(name="lb_qubit", serial_number=25331, frequency=qubit_LO, power=15)
 
 ########################################################################################
 

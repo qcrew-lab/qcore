@@ -16,10 +16,10 @@ qubit = stg.qubit  # reference to the qubit object
 ######################        SET MEASUREMENT PARAMETERS        ########################
 
 mdata = {  # metadata dict, set measurement parameters here
-    "reps": 3000,  # number of sweep repetitions
+    "reps": 40000,  # number of sweep repetitions
     "wait_time": 50000,  # delay between reps in ns, an integer multiple of 4 >= 16
-    "a_start": -2,  # amplitude sweep range is set by a_start, a_stop, and a_step
-    "a_stop": 2,
+    "a_start": -1.6,  # amplitude sweep range is set by a_start, a_stop, and a_step
+    "a_stop": 1.6,
     "a_step": 0.05,
     "qubit_op": "gaussian",  # qubit pulse name as defined in the config
     "r_ampx": 0.2,  # readout pulse amplitude scale factor
@@ -48,7 +48,10 @@ with program() as power_rabi:
 
     with for_(n, 0, n < mdata["reps"], n + 1):  # outer averaging loop, inner ampx sweep
         with for_(a, mdata["a_start"], a < mdata["a_stop"], a + mdata["a_step"]):
+            
+            # First pulse
             play(mdata["qubit_op"] * amp(a), qubit.name)
+          
             align(qubit.name, rr.name)
             measure(
                 mdata["rr_op"] * amp(mdata["r_ampx"]),
@@ -115,12 +118,13 @@ while handle.is_processing():  # while the measurement is running
         yerr=mean_std_error,
         ls="none",
         lw=1,
-        ecolor="red",
+        ecolor="black",
         marker="o",
         ms=4,
         mfc="black",
         mec="black",
         capsize=3,
+        fillstyle="none",
     )
     plt.title(f"Power Rabi: {num_results} reps")
     plt.xlabel("Amplitude scale factor")
@@ -133,12 +137,12 @@ while handle.is_processing():  # while the measurement is running
 
 print(f"{meas_name} completed, fetching results...")  # log message
 
-i_avg = handle.i_avg.fetch_all(flat_struct = True)  # fetch final average I and Q values
-q_avg = handle.q_avg.fetch_all(flat_struct = True)
+i_avg = handle.i_avg.fetch_all(flat_struct=True)  # fetch final average I and Q values
+q_avg = handle.q_avg.fetch_all(flat_struct=True)
 signal_avg = np.abs(i_avg + 1j * q_avg)  # calculate final average signal
 
-i_raw = handle.i_raw.fetch_all(flat_struct = True)  # fetch all raw I & Q values
-q_raw = handle.q_raw.fetch_all(flat_struct = True)
+i_raw = handle.i_raw.fetch_all(flat_struct=True)  # fetch all raw I & Q values
+q_raw = handle.q_raw.fetch_all(flat_struct=True)
 signal_raw = np.abs(i_raw + 1j * q_raw)  # calculate final raw signal
 mean_std_error = scipy.stats.sem(signal_raw, axis=0)  # for plotting errorbars
 
@@ -158,15 +162,16 @@ plt.errorbar(  # plot final results as a scatter plot with errorbars
     yerr=mean_std_error,
     ls="none",
     lw=1,
-    ecolor="red",
+    ecolor="black",
     marker="o",
     ms=4,
     mfc="black",
     mec="black",
     capsize=3,
     label="data",
+    fillstyle="none",
 )
-plt.plot(ampxs, ys_fit, color="m", lw=2, ls="--", label="fit")  # plot fitted values
+plt.plot(ampxs, ys_fit, color="m", lw=2, label="fit")  # plot fitted values
 plt.title(f"Power Rabi: {mdata['reps']} reps")
 plt.xlabel("Amplitude scale factor")
 plt.ylabel("Signal amplitude (A.U.)")

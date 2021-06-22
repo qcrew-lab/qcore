@@ -1,4 +1,4 @@
-""" Resonator spectroscopy measurement script v3.0 """
+""" E->F qubit spectroscopy measurement script v3.0 """
 
 from qcrew.experiments.coax_test.imports import *
 
@@ -7,30 +7,38 @@ reload(stg)
 
 ##########################        TOP LEVEL CONSTANTS        ###########################
 
-meas_name = "rr_spec"  # used as the suffix for the saved data file/plot
+meas_name = "qubit_spec_ef"  # used as the suffix for the saved data file/plot
 start_time = time.perf_counter()  # to get measurement execution time
 
-rr = stg.rr  # reference to the readout resonator object
+rr = stg.rr  # reference to the readout mode object
+qubit = stg.qubit  # reference to the qubit object
 
 ######################        SET MEASUREMENT PARAMETERS        ########################
 
 mdata = {  # metadata dict, set measurement parameters here
-    "reps": 4000,  # number of sweep repetitions
+    "reps": 50000,  # number of sweep repetitions
     "wait_time": 50000,  # delay between reps in ns, an integer multiple of 4 >= 16
-    "f_start": -50.2e6,  # frequency sweep range is set by f_start, f_stop, and f_step
-    "f_stop": -49.6e6,
-    "f_step": 0.02e6,
+    "f_start": -54e6,  # frequency sweep range is set by f_start, f_stop, and f_step
+    "f_stop": -38e6,  # note that here we sweep the frequency of the e->f tone
+    "f_step": 0.05e6,
+    "q_ef_ampx": 1.0,  # qubit e->f pulse amplitude scale factor
+    "qubit_ef_op": "saturation",  # qubit e->f pulse name as defined in the config
+    "q_ge_if": int(190e6),  # frequency played by OPX to qubit to induce g->e
+    "q_ge_ampx": 1.0,  # qubit g->e pulse amplitude scale factor
+    "qubit_ge_op": "pi",  # qubit g->e pulse name as defined in the config
     "r_ampx": 0.2,  # readout pulse amplitude scale factor
-    "rr_op": "readout",  # readout pulse name as defined in the config
+    "rr_op": "readout",  # readout pulse name
     "fit_func_name": "lorentzian",  # name of the fit function
-    "rr_lo_freq": cfg.rr_LO,  # frequency of local oscillator driving rr
+    "rr_lo_freq": cfg.rr_LO,  # frequency of the local oscillator driving rr
     "rr_int_freq": cfg.rr_IF,  # frequency played by OPX to rr
+    "qubit_lo_freq": cfg.qubit_LO,  # frequency of local oscillator driving qubit
+    "qubit_int_freq": cfg.qubit_IF,  # frequency played by OPX to qubit
 }
 
 freqs = np.arange(mdata["f_start"], mdata["f_stop"], mdata["f_step"])  # indep var list
 mdata["sweep_len"] = len(freqs)  # add sweep length to metadata
 
-with program() as rr_spec:
+with program() as qubit_spec_ef:
 
     #####################        QUA VARIABLE DECLARATIONS        ######################
 
@@ -44,7 +52,13 @@ with program() as rr_spec:
 
     with for_(n, 0, n < mdata["reps"], n + 1):  # outer averaging loop, inner freq sweep
         with for_(f, mdata["f_start"], f < mdata["f_stop"], f + mdata["f_step"]):
-            update_frequency(rr.name, f)
+            update_frequency(qubit.name, mdata["q_ge_if"])
+            play(mdata["qubit_ge_op"] * amp(mdata["q_ge_ampx"]), qubit.name)  # G->E
+            update_frequency(qubit.name, f)
+            play(mdata["qubit_ef_op"] * amp(mdata["q_ef_ampx"]), qubit.name)  # E->not E
+            update_frequency(qubit.name, mdata["q_ge_if"])
+            play(mdata["qubit_ge_op"] * amp(mdata["q_ge_ampx"]), qubit.name)  # E->G
+            align(qubit.name, rr.name)
             measure(
                 mdata["rr_op"] * amp(mdata["r_ampx"]),
                 rr.name,
@@ -52,7 +66,7 @@ with program() as rr_spec:
                 demod.full("integW1", I),
                 demod.full("integW2", Q),
             )
-            wait(int(mdata["wait_time"] // 4), rr.name)
+            wait(int(mdata["wait_time"] // 4), qubit.name)
             save(I, I_st)
             save(Q, Q_st)
 
@@ -79,7 +93,7 @@ with program() as rr_spec:
 
 #############################        RUN MEASUREMENT        ############################
 
-job = stg.qm.execute(rr_spec)  # run measurement
+job = stg.qm.execute(qubit_spec_ef)  # run measurement
 print(f"{meas_name} in progress...")  # log message
 handle = job.result_handles
 
@@ -88,8 +102,7 @@ handle = job.result_handles
 plt.rcParams["figure.figsize"] = (12, 8)  # adjust figure size
 handle.signal_sq_avg.wait_for_values(1)  # wait for at least 1 batch to be processed
 
-num_results = 0  # number of repetitions done so far
-while num_results != mdata["reps"]:  # do until all results are processed
+while handle.is_processing():  # while the measurement is running
 
     ######################            FETCH PARTIAL RESULTS         ####################
 
@@ -118,7 +131,7 @@ while num_results != mdata["reps"]:  # do until all results are processed
         mec="black",
         fillstyle="none",
     )
-    plt.title(f"Resonator spectroscopy: {num_results} reps")
+    plt.title(f"Qubit spectroscopy (e -> f): {num_results} reps")
     plt.xlabel("Frequency (Hz)")
     plt.ylabel("Signal amplitude (A.U.)")
     display.display(plt.gcf())  # display latest batch
@@ -127,7 +140,7 @@ while num_results != mdata["reps"]:  # do until all results are processed
 
 ###########################          FETCH FINAL RESULTS       #########################
 
-print(f"{meas_name} completed, saving data...")  # log message
+print(f"{meas_name} completed, fetching results...")  # log message
 
 i_avg = handle.i_avg.fetch_all(flat_struct=True)  # fetch final average I and Q values
 q_avg = handle.q_avg.fetch_all(flat_struct=True)
@@ -162,8 +175,8 @@ plt.errorbar(  # plot final results as a scatter plot with errorbars
     label="data",
     fillstyle="none",
 )
-plt.plot(freqs, ys_fit, color="m", lw=2, ls="--", label="fit")  # plot fitted values
-plt.title(f"Resonator spectroscopy: {mdata['reps']} reps")
+plt.plot(freqs, ys_fit, color="m", lw=2, label="fit")  # plot fitted values
+plt.title(f"Qubit spectroscopy (e -> f): {mdata['reps']} reps")
 plt.xlabel("Frequency (Hz)")
 plt.ylabel("Signal amplitude (A.U.)")
 plt.legend()

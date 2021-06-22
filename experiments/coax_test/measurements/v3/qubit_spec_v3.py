@@ -16,13 +16,13 @@ qubit = stg.qubit  # reference to the qubit object
 ######################        SET MEASUREMENT PARAMETERS        ########################
 
 mdata = {  # metadata dict, set measurement parameters here
-    "reps": 3000,  # number of sweep repetitions
+    "reps": 30000,  # number of sweep repetitions
     "wait_time": 50000,  # delay between reps in ns, an integer multiple of 4 >= 16
-    "f_start": -48e6,  # frequency sweep range is set by f_start, f_stop, and f_step
-    "f_stop": -44e6,
-    "f_step": 0.01e6,
-    "q_ampx": 2.0,  # qubit pulse amplitude scale factor
-    "qubit_op": "saturation",  # qubit pulse name as defined in the config
+    "f_start": -55e6,  # frequency sweep range is set by f_start, f_stop, and f_step
+    "f_stop": -45e6,
+    "f_step": 0.02e6,
+    "q_ampx": 1.0,  # qubit pulse amplitude scale factor
+    "qubit_op": "pi",  # qubit pulse name as defined in the config
     "r_ampx": 0.2,  # readout pulse amplitude scale factor
     "rr_op": "readout",  # readout pulse name
     "fit_func_name": "lorentzian",  # name of the fit function
@@ -117,14 +117,14 @@ while handle.is_processing():  # while the measurement is running
         yerr=mean_std_error,
         ls="none",
         lw=1,
-        ecolor="red",
+        ecolor="black",
         marker="o",
         ms=4,
         mfc="black",
         mec="black",
-        capsize=3,
+        fillstyle="none",
     )
-    plt.title(f"Qubit spectroscopy: {num_results} reps")
+    plt.title(f"Qubit spectroscopy: {mdata['reps']} reps")
     plt.xlabel("Frequency (Hz)")
     plt.ylabel("Signal amplitude (A.U.)")
     display.display(plt.gcf())  # display latest batch
@@ -160,13 +160,13 @@ plt.errorbar(  # plot final results as a scatter plot with errorbars
     yerr=mean_std_error,
     ls="none",
     lw=1,
-    ecolor="red",
+    ecolor="black",
     marker="o",
     ms=4,
     mfc="black",
     mec="black",
-    capsize=3,
     label="data",
+    fillstyle="none",
 )
 plt.plot(freqs, ys_fit, color="m", lw=2, ls="--", label="fit")  # plot fitted values
 plt.title(f"Qubit spectroscopy: {mdata['reps']} reps")

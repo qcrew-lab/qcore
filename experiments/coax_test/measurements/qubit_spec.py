@@ -13,17 +13,17 @@ MEAS_NAME = "qubit_spec"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 400000
+reps = 100000
 wait_time = 12500  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-f_start = -48e6
-f_stop = -44e6
-f_step = 0.01e6
+f_start = 187e6
+f_stop = 193e6
+f_step = 0.05e6
 qubit_f_list = np.arange(f_start, f_stop, f_step)
-qubit_ascale = 2.0
-qubit_op = "saturation"  # qubit operation as defined in config
+qubit_ascale = 1.0
+qubit_op = "gaussian"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
@@ -88,26 +88,33 @@ ax = fig.add_subplot(1, 1, 1)
 hdisplay = display.display("", display_id=True)
 raw_data = {}
 result_handles = job.result_handles
-N = 300  # Maximum size of data batch for each refresh
+N = 500  # Maximum size of data batch for each refresh
 remaining_data = reps
 while remaining_data != 0:
-    # clear data
+
+    # clear data from plot
     ax.clear()
 
     # update data
     N = min(N, remaining_data)  # don't wait for more than there's left
-    raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg"])
-    I_avg = raw_data["I_avg"][-1]
-    Q_avg = raw_data["Q_avg"][-1]
-    amps = np.abs(I_avg + 1j * Q_avg)
+    raw_data = update_results(raw_data, N, result_handles, ["I", "Q"])
+    I = raw_data["I"]
+    Q = raw_data["Q"]
+    I_avg = np.average(I, axis=0)
+    Q_avg = np.average(Q, axis=0)
+
+    # process data
+    amps = np.abs(I + 1j * Q)
+    amps_avg = np.abs(I_avg + 1j * Q_avg)  # Must average before taking the amp
+    std_err = np.std(amps, axis=0) / np.sqrt(amps.shape[0])
     remaining_data -= N
 
-    # plot averaged data
-    ax.scatter(qubit_f_list, amps, s=3, color="black")
+    # plot fitted curve with errorbars
+    params = plot_fit(qubit_f_list, amps_avg, ax, yerr=std_err, fit_func="lorentzian")
 
-    # plot fitted curve
-    params = plot_fit(qubit_f_list, amps, ax, fit_func="lorentzian")
+    # customize figure
     ax.set_title("average of %d results" % (reps - remaining_data))
+    # ax.legend(loc="upper left", bbox_to_anchor=(0, -0.1))  # Relocate legend box
 
     # update figure
     hdisplay.update(fig)
@@ -124,7 +131,7 @@ imgpath = DATA_FOLDER_PATH / (filename + ".png")
 
 with datapath.open("w") as f:
     f.write(metadata)
-    np.savetxt(datapath, [qubit_f_list, amps], delimiter=",")
+    np.savetxt(datapath, [qubit_f_list, amps_avg], delimiter=",")
 plt.savefig(imgpath)
 
 ########################################################################################

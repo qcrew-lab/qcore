@@ -1,7 +1,7 @@
 """ DO NOT DUPLICATE THIS FILE WHILE YOU ARE CONDUCTING THE EXPERIMENT 'COAX_TEST'
 This file is the one and only place to change parameters between measurement runs"""
 ########################################################################################
-#############           HELPER FUNCTIONS - DO NOT EDIT THIS SECTION        #############
+##########################           HELPER FUNCTIONS        ###########################
 ########################################################################################
 import numpy as np
 
@@ -12,6 +12,17 @@ def gaussian_fn(maximum: float, sigma: float, multiple_of_sigma: int) -> np.ndar
     t = np.linspace(0, length - 1, length)
     gaussian = maximum * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
     return [float(x) for x in gaussian]
+
+
+def gaussian_derivative_fn(
+    gauss_A: float, drag: float, sigma: float, multiple_of_sigma: int
+) -> np.ndarray:
+    length = int(multiple_of_sigma * sigma)
+    mu = int(np.floor(length / 2))
+    t = np.linspace(0, length - 1, length)
+    gaussian = gauss_A * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    gaussian_derivative = drag * gaussian * (t - mu) / (sigma ** 2)
+    return gaussian_derivative
 
 
 def IQ_imbalance(gain: float, phase: float) -> list[float]:
@@ -27,8 +38,13 @@ def IQ_imbalance(gain: float, phase: float) -> list[float]:
 ##############################           ELEMENTS         ##############################
 ########################################################################################
 
-qubit_LO = 4.7775e9
-qubit_IF = -50e6
+# e-f transition
+qubit_LO = 4.77685e9
+qubit_IF = -45.1e6
+
+# g-e transition
+# qubit_LO = 5.01685e9
+# qubit_IF = -50e6
 
 rr_LO = 8.60385e9
 rr_IF = -50e6
@@ -63,8 +79,13 @@ readout_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
 saturation_pulse_len = 15000  # must be an integer multiple of 4 >= 16
 saturation_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
 
-gaussian_pulse_wf_I_samples = gaussian_fn(0.2, 175, 4)  # (amp, sigma, multiple_sigma)
+# (maximum, sigma, multiple_of_sigma)
+gaussian_pulse_wf_I_samples = gaussian_fn(0.2 * 1.9164, 200, 4)
 gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
+
+# (maximum, drag, sigma, multiple_of_sigma)
+gaussian_derivative_wf_samples = gaussian_derivative_fn(0.2 * 1.9164, 37.9, 200, 4)
+gaussian_drag_pulse_len = len(gaussian_derivative_wf_samples)
 
 ################################### EXCLUSIVE PULSES ###################################
 
@@ -73,11 +94,22 @@ sq_pi_len = 588  # must be an integer multiple of 4 >= 16
 sq_pi2_len = 292  # must be an integer multiple of 4 >= 16
 sq_pi_pi2_amp = 0.3444  # must be float in the interval (-0.5, 0.5)
 
-# qubit gaussian pi and pi2 pulses
-gauss_pi_samples = gaussian_fn(0.2 * 1.9164, 175, 4)  # (amp, sigma, multiple_sigma)
+# qubit gaussian pi pulse
+gauss_pi_amp = 0.2 * 1.9164
+gauss_pi_sigma = 175
+gauss_pi_chop = 4
+gauss_pi_samples = gaussian_fn(gauss_pi_amp, gauss_pi_sigma, gauss_pi_chop)
 gauss_pi_len = len(gauss_pi_samples)
+# DRAG correction
+drag_coeff = 13.27
+gauss_pi_drag_samples = gaussian_derivative_fn(
+    gauss_pi_amp, drag_coeff, gauss_pi_sigma, gauss_pi_chop
+)
+
+# qubit gaussian pi2 pulse
 gauss_pi2_samples = gaussian_fn(0.2 * 1.877, 90, 4)  # (amp, sigma, multiple_sigma)
 gauss_pi2_len = len(gauss_pi2_samples)
+
 
 ########################################################################################
 ################################           PORTS         ###############################
@@ -118,10 +150,12 @@ config = {
             "operations": {
                 "CW": "CW",
                 "pi": "pi",
+                "pi_drag": "pi_drag",
                 "pi2": "pi2",
                 "sqpi": "sqpi",
                 "sqpi2": "sqpi2",
                 "gaussian": "gaussian_pulse",
+                "drag": "gaussian_drag_pulse",
                 "saturation": "saturation_pulse",
             },
         },
@@ -154,6 +188,11 @@ config = {
             "length": gauss_pi_len,
             "waveforms": {"I": "gauss_pi_wf", "Q": "zero_wf"},
         },
+        "pi_drag": {
+            "operation": "control",
+            "length": gauss_pi_len,
+            "waveforms": {"I": "gauss_pi_wf", "Q": "gauss_pi_drag"},
+        },
         "pi2": {
             "operation": "control",
             "length": gauss_pi2_len,
@@ -178,6 +217,11 @@ config = {
             "operation": "control",
             "length": gaussian_pulse_len,
             "waveforms": {"I": "gauss_wf", "Q": "zero_wf"},
+        },
+        "gaussian_drag_pulse": {
+            "operation": "control",
+            "length": gaussian_drag_pulse_len,
+            "waveforms": {"I": "gauss_wf", "Q": "gauss_derivative_wf"},
         },
         "readout_pulse": {
             "operation": "measurement",
@@ -207,6 +251,10 @@ config = {
             "type": "arbitrary",
             "samples": gaussian_pulse_wf_I_samples,
         },
+        "gauss_derivative_wf": {
+            "type": "arbitrary",
+            "samples": gaussian_derivative_wf_samples,
+        },
         "readout_wf": {
             "type": "constant",
             "sample": readout_pulse_amp,
@@ -214,6 +262,10 @@ config = {
         "gauss_pi_wf": {
             "type": "arbitrary",
             "samples": gauss_pi_samples,
+        },
+        "gauss_pi_drag": {
+            "type": "arbitrary",
+            "samples": gauss_pi_drag_samples,
         },
         "gauss_pi2_wf": {
             "type": "arbitrary",

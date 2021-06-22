@@ -6,24 +6,24 @@ reload(cfg), reload(stg)  # reloads modules before executing the code below
 # NOTE: make changes to lo, if, tof, mixer offsets in 'configuration.py'
 # NOTE: make changes to constant pulse amp and pulse duration in the qua script below
 
-MEAS_NAME = "power_rabi"  # used for naming the saved data file
+MEAS_NAME = "power_rabi_2pulses"  # used for naming the saved data file
 
 ########################################################################################
 ########################           MEASUREMENT SEQUENCE         ########################
 ########################################################################################
-# hello
+# hello HI
 # Loop parameters
-reps = 100000
+reps = 200000
 wait_time = 12500  # in clock cycles
 
-# Qubit pulse
+# Qubit pulse (note this will play twice)
 qubit = stg.qubit
-a_start = -2.0
-a_stop = 2.0
+a_start = -1.00
+a_stop = 1.00
 a_step = 0.05
 qubit_a_list = np.arange(a_start, a_stop, a_step)
 qubit_f = qubit.int_freq
-qubit_op = "pi"  # qubit operation as defined in config
+qubit_op = "pi_drag"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
@@ -33,7 +33,7 @@ rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
 # NOTE: The weights must be defined in configuration.py for the chosen msmt operation
-print(qubit_f)
+
 
 with program() as power_rabi:
     n = declare(int)
@@ -51,7 +51,7 @@ with program() as power_rabi:
 
     with for_(n, 0, n < reps, n + 1):
         with for_(a, a_start, a < a_stop, a + a_step):
-
+            play(qubit_op * amp(a), qubit.name)
             play(qubit_op * amp(a), qubit.name)
             align(qubit.name, rr.name)
             measure(
