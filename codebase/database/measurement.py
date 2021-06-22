@@ -35,8 +35,8 @@ from typing import (
 
 import numpy as np
 
-from dataset_hdf5 import HDF5DataSet, Value_types, new_data_set, load_by_guid
-from export_config import get_data_export_automatic
+from .dataset_hdf5 import HDF5DataSet, Value_types, new_data_set, load_by_guid
+from .export_config import get_data_export_automatic
 
 import qcodes as qc
 import qcodes.utils.validators as vals
@@ -65,15 +65,15 @@ from qcodes.instrument.parameter import (
 )
 from qcodes.utils.delaykeyboardinterrupt import DelayedKeyboardInterrupt
 from qcodes.utils.helpers import NumpyJSONEncoder
-from experiment import Experiment
+from .experiment import Experiment
 
 log = logging.getLogger(__name__)
 
 
 ActionType = Tuple[Callable[..., Any], Sequence[Any]]
-SubscriberType = Tuple[Callable[..., Any],
-                       Union[MutableSequence[Any],
-                             MutableMapping[Any, Any]]]
+SubscriberType = Tuple[
+    Callable[..., Any], Union[MutableSequence[Any], MutableMapping[Any, Any]]
+]
 
 
 class ParameterTypeError(Exception):
@@ -88,27 +88,25 @@ class DataSaver:
 
     default_callback: Optional[Dict[Any, Any]] = None
 
-    def __init__(self, dataset: HDF5DataSet,
-                 write_period: float,
-                 interdeps: InterDependencies_) -> None:
+    def __init__(
+        self, dataset: HDF5DataSet, write_period: float, interdeps: InterDependencies_
+    ) -> None:
         self._dataset = dataset
-        if DataSaver.default_callback is not None \
-                and 'run_tables_subscription_callback' \
-                    in DataSaver.default_callback:
-            callback = DataSaver.default_callback[
-                'run_tables_subscription_callback']
-            min_wait = DataSaver.default_callback[
-                'run_tables_subscription_min_wait']
-            min_count = DataSaver.default_callback[
-                'run_tables_subscription_min_count']
-            snapshot = dataset.get_metadata('snapshot')
-            self._dataset.subscribe(callback,
-                                    min_wait=min_wait,
-                                    min_count=min_count,
-                                    state={},
-                                    callback_kwargs={'run_id':
-                                                     self._dataset.run_id,
-                                                     'snapshot': snapshot})
+        if (
+            self.default_callback is not None
+            and "run_tables_subscription_callback" in DataSaver.default_callback
+        ):
+            callback = DataSaver.default_callback["run_tables_subscription_callback"]
+            min_wait = DataSaver.default_callback["run_tables_subscription_min_wait"]
+            min_count = DataSaver.default_callback["run_tables_subscription_min_count"]
+            snapshot = dataset.get_metadata("snapshot")
+            self._dataset.subscribe(
+                callback,
+                min_wait=min_wait,
+                min_count=min_count,
+                state={},
+                callback_kwargs={"run_id": self._dataset.run_id, "snapshot": snapshot},
+            )
         default_subscribers = qc.config.subscription.default_subscribers
         for subscriber in default_subscribers:
             self._dataset.subscribe_from_config(subscriber)
@@ -162,35 +160,39 @@ class DataSaver:
         # enforcing that setpoints come before dependent variables.
         results_dict: Dict[ParamSpecBase, np.ndarray] = {}
 
-        parameter_names = tuple(partial_result[0].full_name
-                                if isinstance(partial_result[0], _BaseParameter) else partial_result[0]
-                                for partial_result in res_tuple)
-    
+        parameter_names = tuple(
+            partial_result[0].full_name
+            if isinstance(partial_result[0], _BaseParameter)
+            else partial_result[0]
+            for partial_result in res_tuple
+        )
 
         for partial_result in res_tuple:
             parameter = partial_result[0]
             data = partial_result[1]
 
-            if (isinstance(parameter, _BaseParameter) and
-                    isinstance(parameter.vals, vals.Arrays)):
+            if isinstance(parameter, _BaseParameter) and isinstance(
+                parameter.vals, vals.Arrays
+            ):
                 if not isinstance(data, np.ndarray):
                     raise TypeError(
                         f"Expected data for Parameter with Array validator "
-                        f"to be a numpy array but got: {type(data)}")
+                        f"to be a numpy array but got: {type(data)}"
+                    )
 
-                if (parameter.vals.shape is not None
-                        and data.shape != parameter.vals.shape):
+                if (
+                    parameter.vals.shape is not None
+                    and data.shape != parameter.vals.shape
+                ):
                     raise TypeError(
                         f"Expected data with shape {parameter.vals.shape}, "
                         f"but got {data.shape} for parameter: {parameter.full_name}"
                     )
 
             if isinstance(parameter, ArrayParameter):
-                results_dict.update(
-                    self._unpack_arrayparameter(partial_result))
+                results_dict.update(self._unpack_arrayparameter(partial_result))
             elif isinstance(parameter, MultiParameter):
-                results_dict.update(
-                    self._unpack_multiparameter(partial_result))
+                results_dict.update(self._unpack_multiparameter(partial_result))
             elif isinstance(parameter, ParameterWithSetpoints):
                 results_dict.update(
                     self._conditionally_expand_parameter_with_setpoints(
@@ -198,61 +200,68 @@ class DataSaver:
                     )
                 )
             else:
-                results_dict.update(
-                    self._unpack_partial_result(partial_result)
-                )
+
+                results_dict.update(self._unpack_partial_result(partial_result))
 
         self._validate_result_deps(results_dict)
         self._validate_result_shapes(results_dict)
         self._validate_result_types(results_dict)
-        
+
         self.dataset._enqueue_results(results_dict)
-    
+
         if perf_counter() - self._last_save_time > self.write_period:
             self.flush_data_to_database()
             self._last_save_time = perf_counter()
 
     def _conditionally_expand_parameter_with_setpoints(
-            self, data: values_type, parameter: ParameterWithSetpoints,
-            parameter_names: Sequence[str], partial_result: res_type
+        self,
+        data: values_type,
+        parameter: ParameterWithSetpoints,
+        parameter_names: Sequence[str],
+        partial_result: res_type,
     ) -> Dict[ParamSpecBase, np.ndarray]:
         local_results = {}
         setpoint_names = tuple(setpoint.full_name for setpoint in parameter.setpoints)
-        expanded = tuple(setpoint_name in parameter_names for setpoint_name in setpoint_names)
+        expanded = tuple(
+            setpoint_name in parameter_names for setpoint_name in setpoint_names
+        )
         if all(expanded):
-            local_results.update(
-                self._unpack_partial_result(partial_result))
+            local_results.update(self._unpack_partial_result(partial_result))
         elif any(expanded):
-            raise ValueError(f"Some of the setpoints of {parameter.full_name} "
-                             "were explicitly given but others were not. "
-                      "Either supply all of them or none of them.")
+            raise ValueError(
+                f"Some of the setpoints of {parameter.full_name} "
+                "were explicitly given but others were not. "
+                "Either supply all of them or none of them."
+            )
         else:
             expanded_partial_result = expand_setpoints_helper(parameter, data)
             for res in expanded_partial_result:
-                local_results.update(
-                    self._unpack_partial_result(res)
-                )
+                local_results.update(self._unpack_partial_result(res))
         return local_results
 
     def _unpack_partial_result(
-            self,
-            partial_result: res_type) -> Dict[ParamSpecBase, np.ndarray]:
+        self, partial_result: res_type
+    ) -> Dict[ParamSpecBase, np.ndarray]:
         """
         Unpack a partial result (not containing :class:`ArrayParameters` or
         class:`MultiParameters`) into a standard results dict form and return
         that dict
         """
         param, values = partial_result
+
         try:
             parameter = self._interdeps._id_to_paramspec[str(param)]
         except KeyError:
-            raise ValueError('Can not add result for parameter '
-                             f'{param}, no such parameter registered '
-                             'with this measurement.')
+            raise ValueError(
+                "Can not add result for parameter "
+                f"{param}, no such parameter registered "
+                "with this measurement."
+            )
         return {parameter: np.array(values)}
 
     def _unpack_arrayparameter(
-        self, partial_result: res_type) -> Dict[ParamSpecBase, np.ndarray]:
+        self, partial_result: res_type
+    ) -> Dict[ParamSpecBase, np.ndarray]:
         """
         Unpack a partial result containing an :class:`Arrayparameter` into a
         standard results dict form and return that dict
@@ -261,15 +270,19 @@ class DataSaver:
         array_param = cast(ArrayParameter, array_param)
 
         if array_param.setpoints is None:
-            raise RuntimeError(f"{array_param.full_name} is an "
-                               f"{type(array_param)} "
-                               f"without setpoints. Cannot handle this.")
+            raise RuntimeError(
+                f"{array_param.full_name} is an "
+                f"{type(array_param)} "
+                f"without setpoints. Cannot handle this."
+            )
         try:
             main_parameter = self._interdeps._id_to_paramspec[str(array_param)]
         except KeyError:
-            raise ValueError('Can not add result for parameter '
-                             f'{array_param}, no such parameter registered '
-                             'with this measurement.')
+            raise ValueError(
+                "Can not add result for parameter "
+                f"{array_param}, no such parameter registered "
+                "with this measurement."
+            )
 
         res_dict = {main_parameter: np.array(values_array)}
 
@@ -278,13 +291,15 @@ class DataSaver:
 
         res_dict.update(
             self._unpack_setpoints_from_parameter(
-                array_param, array_param.setpoints,
-                sp_names, fallback_sp_name))
+                array_param, array_param.setpoints, sp_names, fallback_sp_name
+            )
+        )
 
         return res_dict
 
     def _unpack_multiparameter(
-            self, partial_result: res_type) -> Dict[ParamSpecBase, np.ndarray]:
+        self, partial_result: res_type
+    ) -> Dict[ParamSpecBase, np.ndarray]:
         """
         Unpack the `subarrays` and `setpoints` from a :class:`MultiParameter`
         and into a standard results dict form and return that dict
@@ -297,9 +312,11 @@ class DataSaver:
         result_dict = {}
 
         if parameter.setpoints is None:
-            raise RuntimeError(f"{parameter.full_name} is an "
-                               f"{type(parameter)} "
-                               f"without setpoints. Cannot handle this.")
+            raise RuntimeError(
+                f"{parameter.full_name} is an "
+                f"{type(parameter)} "
+                f"without setpoints. Cannot handle this."
+            )
         for i in range(len(parameter.shapes)):
             # if this loop runs, then 'data' is a Sequence
             data = cast(Sequence[Union[str, int, float, Any]], data)
@@ -309,37 +326,43 @@ class DataSaver:
             try:
                 paramspec = self._interdeps._id_to_paramspec[parameter.full_names[i]]
             except KeyError:
-                raise ValueError('Can not add result for parameter '
-                                 f'{parameter.names[i]}, '
-                                 'no such parameter registered '
-                                 'with this measurement.')
+                raise ValueError(
+                    "Can not add result for parameter "
+                    f"{parameter.names[i]}, "
+                    "no such parameter registered "
+                    "with this measurement."
+                )
 
             result_dict.update({paramspec: np.array(data[i])})
             if shape != ():
                 # array parameter like part of the multiparameter
                 # need to find setpoints too
-                fallback_sp_name = f'{parameter.full_names[i]}_setpoint'
+                fallback_sp_name = f"{parameter.full_names[i]}_setpoint"
 
                 sp_names: Optional[Sequence[str]]
-                if (parameter.setpoint_full_names is not None
-                        and parameter.setpoint_full_names[i] is not None):
+                if (
+                    parameter.setpoint_full_names is not None
+                    and parameter.setpoint_full_names[i] is not None
+                ):
                     sp_names = parameter.setpoint_full_names[i]
                 else:
                     sp_names = None
 
                 result_dict.update(
                     self._unpack_setpoints_from_parameter(
-                        parameter,
-                        parameter.setpoints[i],
-                        sp_names,
-                        fallback_sp_name))
+                        parameter, parameter.setpoints[i], sp_names, fallback_sp_name
+                    )
+                )
 
         return result_dict
 
     def _unpack_setpoints_from_parameter(
-        self, parameter: _BaseParameter, setpoints: Sequence[Any],
-        sp_names: Optional[Sequence[str]], fallback_sp_name: str
-            ) -> Dict[ParamSpecBase, np.ndarray]:
+        self,
+        parameter: _BaseParameter,
+        setpoints: Sequence[Any],
+        sp_names: Optional[Sequence[str]],
+        fallback_sp_name: str,
+    ) -> Dict[ParamSpecBase, np.ndarray]:
         """
         Unpack the `setpoints` and their values from a
         :class:`ArrayParameter` or :class:`MultiParameter`
@@ -352,13 +375,15 @@ class DataSaver:
             if sp_names is not None:
                 spname = sp_names[i]
             else:
-                spname = f'{fallback_sp_name}_{i}'
+                spname = f"{fallback_sp_name}_{i}"
 
             try:
                 setpoint_parameter = self._interdeps[spname]
             except KeyError:
-                raise RuntimeError('No setpoints registered for '
-                                   f'{type(parameter)} {parameter.full_name}!')
+                raise RuntimeError(
+                    "No setpoints registered for "
+                    f"{type(parameter)} {parameter.full_name}!"
+                )
             sps = np.array(sps)
             while sps.ndim > 1:
                 # The outermost setpoint axis or an nD param is nD
@@ -369,7 +394,7 @@ class DataSaver:
             setpoint_parameters.append(setpoint_parameter)
             setpoint_axes.append(sps)
 
-        output_grids = np.meshgrid(*setpoint_axes, indexing='ij')
+        output_grids = np.meshgrid(*setpoint_axes, indexing="ij")
         result_dict = {}
         for grid, param in zip(output_grids, setpoint_parameters):
             result_dict.update({param: grid})
@@ -377,7 +402,8 @@ class DataSaver:
         return result_dict
 
     def _validate_result_deps(
-            self, results_dict: Mapping[ParamSpecBase, values_type]) -> None:
+        self, results_dict: Mapping[ParamSpecBase, values_type]
+    ) -> None:
         """
         Validate that the dependencies of the ``results_dict`` are met,
         meaning that (some) values for all required setpoints and inferences
@@ -386,49 +412,61 @@ class DataSaver:
         try:
             self._interdeps.validate_subset(list(results_dict.keys()))
         except (DependencyError, InferenceError) as err:
-            raise ValueError('Can not add result, some required parameters '
-                             'are missing.') from err
+            raise ValueError(
+                "Can not add result, some required parameters " "are missing."
+            ) from err
 
     def _validate_result_shapes(
-            self, results_dict: Mapping[ParamSpecBase, values_type]) -> None:
+        self, results_dict: Mapping[ParamSpecBase, values_type]
+    ) -> None:
         """
         Validate that all sizes of the ``results_dict`` are consistent.
         This means that array-values of parameters and their setpoints are
         of the same size, whereas parameters with no setpoint relation to
         each other can have different sizes.
         """
-        toplevel_params = (set(self._interdeps.dependencies)
-                           .intersection(set(results_dict)))
-        
+        toplevel_params = set(self._interdeps.dependencies).intersection(
+            set(results_dict)
+        )
+
         for toplevel_param in toplevel_params:
 
             required_shape = np.shape(results_dict[toplevel_param])
             for setpoint in self._interdeps.dependencies[toplevel_param]:
                 # a setpoint is allowed to be a scalar; shape is then ()
-                
+
                 setpoint_shape = np.shape(results_dict[setpoint])
                 if setpoint_shape not in [(), required_shape]:
-                    raise ValueError(f'Incompatible shapes. Parameter '
-                                     f"{toplevel_param.name} has shape "
-                                     f"{required_shape}, but its setpoint "
-                                     f"{setpoint.name} has shape "
-                                     f"{setpoint_shape}.")
+                    raise ValueError(
+                        f"Incompatible shapes. Parameter "
+                        f"{toplevel_param.name} has shape "
+                        f"{required_shape}, but its setpoint "
+                        f"{setpoint.name} has shape "
+                        f"{setpoint_shape}."
+                    )
 
     @staticmethod
     def _validate_result_types(
-            results_dict: Mapping[ParamSpecBase, np.ndarray]) -> None:
+        results_dict: Mapping[ParamSpecBase, np.ndarray]
+    ) -> None:
         """
         Validate the type of the results
         """
 
-        allowed_kinds = {'numeric': 'iuf', 'text': 'SU', 'array': 'iufcSUmM',
-                         'complex': 'c'}
+        allowed_kinds = {
+            "numeric": "iuf",
+            "text": "SU",
+            "array": "iufcSUmM",
+            "complex": "c",
+        }
 
         for ps, vals in results_dict.items():
-                if vals.dtype.kind not in allowed_kinds[ps.type]:
-                    raise ValueError(f'Parameter {ps.name} is of type '
-                                     f'"{ps.type}", but got a result of '
-                                     f'type {vals.dtype} ({vals}).')
+            if vals.dtype.kind not in allowed_kinds[ps.type]:
+                raise ValueError(
+                    f"Parameter {ps.name} is of type "
+                    f'"{ps.type}", but got a result of '
+                    f"type {vals.dtype} ({vals})."
+                )
 
     def flush_data_to_database(self, block: bool = False) -> None:
         """
@@ -490,8 +528,9 @@ class Runner:
         in_memory_cache: bool = True,
     ) -> None:
 
-        self.write_period = self._calculate_write_period(write_in_background,
-                                                         write_period)
+        self.write_period = self._calculate_write_period(
+            write_in_background, write_period
+        )
 
         self.enteractions = enteractions
         self.exitactions = exitactions
@@ -504,7 +543,7 @@ class Runner:
         self.station = station
         self._interdependencies = interdeps
         self._shapes: Shapes = shapes
-        self.name = name or 'results_database'
+        self.name = name or "results_database"
         self._parent_datasets = parent_datasets
         self._extra_log_info = extra_log_info
         self._write_in_background = write_in_background
@@ -512,16 +551,17 @@ class Runner:
 
     @staticmethod
     def _calculate_write_period(
-            write_in_background: bool,
-            write_period: Optional[float]
+        write_in_background: bool, write_period: Optional[float]
     ) -> float:
         write_period_changed_from_default = (
-                write_period is not None and
-                write_period != qc.config.defaults.dataset.write_period
+            write_period is not None
+            and write_period != qc.config.defaults.dataset.write_period
         )
         if write_in_background and write_period_changed_from_default:
-            warnings.warn(f"The specified write period of {write_period} s "
-                          "will be ignored, since write_in_background==True")
+            warnings.warn(
+                f"The specified write period of {write_period} s "
+                "will be ignored, since write_in_background==True"
+            )
         if write_in_background:
             return 0.0
         if write_period is None:
@@ -538,19 +578,19 @@ class Runner:
         # next set up the "datasaver"
         if self.experiment is not None:
 
-            self.ds = new_data_set( name=self.name, 
-                                    exp_id=self.experiment.exp_id,
-                                    exp_name=self.experiment.exp_name,
-                                    sample_name=self.experiment.sample_name,
-                                    conn=self.experiment.conn,
-                                    is_new_exp=False,
-                                    in_memory_cache=self._in_memory_cache
-                                )
+            self.ds = new_data_set(
+                name=self.name,
+                exp_id=self.experiment.exp_id,
+                exp_name=self.experiment.exp_name,
+                sample_name=self.experiment.sample_name,
+                conn=self.experiment.conn,
+                is_new_exp=False,
+                in_memory_cache=self._in_memory_cache,
+            )
         else:
-            self.ds = new_data_set(name = self.name,
-                                   is_new_exp=False,
-                                   in_memory_cache=self._in_memory_cache
-                            )
+            self.ds = new_data_set(
+                name=self.name, is_new_exp=False, in_memory_cache=self._in_memory_cache
+            )
 
         # .. and give the dataset a snapshot as metadata
         if self.station is None:
@@ -559,17 +599,16 @@ class Runner:
             station = self.station
 
         if station:
-            self.ds.add_snapshot(json.dumps({'station': station.snapshot()},
-                                            cls=NumpyJSONEncoder))
+            self.ds.add_snapshot(
+                json.dumps({"station": station.snapshot()}, cls=NumpyJSONEncoder)
+            )
 
         if self._interdependencies == InterDependencies_():
             raise RuntimeError("No parameters supplied")
         else:
-            self.ds.set_interdependencies(self._interdependencies,
-                                          self._shapes)
+            self.ds.set_interdependencies(self._interdependencies, self._shapes)
 
-        links = [Link(head=self.ds.guid, **pdict)
-                 for pdict in self._parent_datasets]
+        links = [Link(head=self.ds.guid, **pdict) for pdict in self._parent_datasets]
         self.ds.parent_dataset_links = links
         self.ds.mark_started(start_bg_writer=self._write_in_background)
 
@@ -578,30 +617,36 @@ class Runner:
             # We register with minimal waiting time.
             # That should make all subscribers be called when data is flushed
             # to the database
-            log.debug(f'Subscribing callable {callble} with state {state}')
+            log.debug(f"Subscribing callable {callble} with state {state}")
             self.ds.subscribe(callble, min_wait=0, min_count=1, state=state)
 
-        print(f'Starting experimental run with id: {self.ds.run_id}.'
-              f' {self._extra_log_info}')
-        log.info(f'Starting measurement with guid: {self.ds.guid}, '
-                 f'sample_name: "{self.ds.sample_name}", '
-                 f'exp_name: "{self.ds.exp_name}", '
-                 f'ds_name: "{self.ds.name}". '
-                 f'{self._extra_log_info}')
-        log.info(f'Using background writing: {self._write_in_background}')
+        print(
+            f"Starting experimental run with id: {self.ds.run_id}."
+            f" {self._extra_log_info}"
+        )
+        log.info(
+            f"Starting measurement with guid: {self.ds.guid}, "
+            f'sample_name: "{self.ds.sample_name}", '
+            f'exp_name: "{self.ds.exp_name}", '
+            f'ds_name: "{self.ds.name}". '
+            f"{self._extra_log_info}"
+        )
+        log.info(f"Using background writing: {self._write_in_background}")
 
         self.datasaver = DataSaver(
-                            dataset=self.ds,
-                            write_period=self.write_period,
-                            interdeps=self._interdependencies)
+            dataset=self.ds,
+            write_period=self.write_period,
+            interdeps=self._interdependencies,
+        )
 
         return self.datasaver
 
-    def __exit__(self,
-                 exception_type: Optional[Type[BaseException]],
-                 exception_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]
-                 ) -> None:
+    def __exit__(
+        self,
+        exception_type: Optional[Type[BaseException]],
+        exception_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
         with DelayedKeyboardInterrupt():
             self.datasaver.flush_data_to_database(block=True)
 
@@ -613,30 +658,33 @@ class Runner:
                 # if an exception happened during the measurement,
                 # log the exception
                 stream = io.StringIO()
-                tb_module.print_exception(exception_type,
-                                          exception_value,
-                                          traceback,
-                                          file=stream)
+                tb_module.print_exception(
+                    exception_type, exception_value, traceback, file=stream
+                )
                 exception_string = stream.getvalue()
-                log.warning('An exception occured in measurement with guid: '
-                            f'{self.ds.guid};\nTraceback:\n{exception_string}')
+                log.warning(
+                    "An exception occured in measurement with guid: "
+                    f"{self.ds.guid};\nTraceback:\n{exception_string}"
+                )
                 self.ds.add_metadata("measurement_exception", exception_string)
 
             # and finally mark the dataset as closed, thus
             # finishing the measurement
             # Note that the completion of a dataset entails waiting for the
             # write thread to terminate (iff the write thread has been started)
-    
+
             # if get_data_export_automatic():
             #     self.datasaver.export_data()
 
-            log.info(f'Finished measurement with guid: {self.ds.guid}. '
-                     f'{self._extra_log_info}')
+            log.info(
+                f"Finished measurement with guid: {self.ds.guid}. "
+                f"{self._extra_log_info}"
+            )
             self.ds.unsubscribe_all()
             self.ds.mark_completed()
 
 
-T = TypeVar('T', bound='Measurement')
+T = TypeVar("T", bound="Measurement")
 
 
 class Measurement:
@@ -655,9 +703,12 @@ class Measurement:
             'results' is used for the dataset.
     """
 
-    def __init__(self, exp: Optional[Experiment] = None,
-                 station: Optional[qc.Station] = None,
-                 name: str = '') -> None:
+    def __init__(
+        self,
+        exp: Optional[Experiment] = None,
+        station: Optional[qc.Station] = None,
+        name: str = "",
+    ) -> None:
         self.exitactions: List[ActionType] = []
         self.enteractions: List[ActionType] = []
         self.subscribers: List[SubscriberType] = []
@@ -669,7 +720,7 @@ class Measurement:
         self._interdeps = InterDependencies_()
         self._shapes: Shapes = None
         self._parent_datasets: List[Dict[str, str]] = []
-        self._extra_log_info: str = ''
+        self._extra_log_info: str = ""
 
     @property
     def parameters(self) -> Dict[str, ParamSpecBase]:
@@ -682,16 +733,18 @@ class Measurement:
     @write_period.setter
     def write_period(self, wp: float) -> None:
         if not isinstance(wp, Number):
-            raise ValueError('The write period must be a number (of seconds).')
+            raise ValueError("The write period must be a number (of seconds).")
         wp_float = float(wp)
         if wp_float < 1e-3:
-            raise ValueError('The write period must be at least 1 ms.')
+            raise ValueError("The write period must be at least 1 ms.")
         self._write_period = wp_float
 
     def _paramspecbase_from_strings(
-            self, name: str, setpoints: Optional[Sequence[str]] = None,
-            basis: Optional[Sequence[str]] = None
-            ) -> Tuple[Tuple[ParamSpecBase, ...], Tuple[ParamSpecBase, ...]]:
+        self,
+        name: str,
+        setpoints: Optional[Sequence[str]] = None,
+        basis: Optional[Sequence[str]] = None,
+    ) -> Tuple[Tuple[ParamSpecBase, ...], Tuple[ParamSpecBase, ...]]:
         """
         Helper function to look up and get ParamSpecBases and to give a nice
         error message if the user tries to register a parameter with reference
@@ -716,8 +769,10 @@ class Measurement:
                     sp_psb = idps._id_to_paramspec[sp]
                     depends_on.append(sp_psb)
                 except KeyError:
-                    raise ValueError(f'Unknown setpoint: {sp}.'
-                                     ' Please register that parameter first.')
+                    raise ValueError(
+                        f"Unknown setpoint: {sp}."
+                        " Please register that parameter first."
+                    )
 
         # now handle inferred parameters
         inf_from = []
@@ -727,14 +782,16 @@ class Measurement:
                     inff_psb = idps._id_to_paramspec[inff]
                     inf_from.append(inff_psb)
                 except KeyError:
-                    raise ValueError(f'Unknown basis parameter: {inff}.'
-                                     ' Please register that parameter first.')
+                    raise ValueError(
+                        f"Unknown basis parameter: {inff}."
+                        " Please register that parameter first."
+                    )
 
         return tuple(depends_on), tuple(inf_from)
 
     def register_parent(
-            self: T, parent: HDF5DataSet, link_type: str,
-            description: str = "") -> T:
+        self: T, parent: HDF5DataSet, link_type: str, description: str = ""
+    ) -> T:
         """
         Register a parent for the outcome of this measurement
 
@@ -747,17 +804,22 @@ class Measurement:
         # Link object we will eventually make out of this information. We
         # cannot create a Link object just yet, because the DataSet of this
         # Measurement has not been given a GUID yet
-        parent_dict = {'tail': parent.guid, 'edge_type': link_type,
-                       'description': description}
+        parent_dict = {
+            "tail": parent.guid,
+            "edge_type": link_type,
+            "description": description,
+        }
         self._parent_datasets.append(parent_dict)
 
         return self
 
     def register_parameter(
-            self: T, parameter: _BaseParameter,
-            setpoints: Optional[setpoints_type] = None,
-            basis: Optional[setpoints_type] = None,
-            paramtype: Optional[str] = None) -> T:
+        self: T,
+        parameter: _BaseParameter,
+        setpoints: Optional[setpoints_type] = None,
+        basis: Optional[setpoints_type] = None,
+        paramtype: Optional[str] = None,
+    ) -> T:
         """
         Add QCoDeS Parameter to the dataset produced by running this
         measurement.
@@ -775,52 +837,58 @@ class Measurement:
                 and the validator of the supplied parameter.
         """
         if not isinstance(parameter, _BaseParameter):
-            raise ValueError('Can not register object of type {}. Can only '
-                             'register a QCoDeS Parameter.'
-                             ''.format(type(parameter)))
+            raise ValueError(
+                "Can not register object of type {}. Can only "
+                "register a QCoDeS Parameter."
+                "".format(type(parameter))
+            )
 
         paramtype = self._infer_paramtype(parameter, paramtype)
         # default to numeric
         if paramtype is None:
-            paramtype = 'numeric'
+            paramtype = "numeric"
 
         # now the parameter type must be valid
         if paramtype not in ParamSpec.allowed_types:
-            raise RuntimeError("Trying to register a parameter with type "
-                               f"{paramtype}. However, only "
-                               f"{ParamSpec.allowed_types} are supported.")
+            raise RuntimeError(
+                "Trying to register a parameter with type "
+                f"{paramtype}. However, only "
+                f"{ParamSpec.allowed_types} are supported."
+            )
 
         if isinstance(parameter, ArrayParameter):
-            self._register_arrayparameter(parameter,
-                                          setpoints,
-                                          basis,
-                                          paramtype)
+            self._register_arrayparameter(parameter, setpoints, basis, paramtype)
         elif isinstance(parameter, ParameterWithSetpoints):
-            self._register_parameter_with_setpoints(parameter,
-                                                    setpoints,
-                                                    basis,
-                                                    paramtype)
+            self._register_parameter_with_setpoints(
+                parameter, setpoints, basis, paramtype
+            )
         elif isinstance(parameter, MultiParameter):
-            self._register_multiparameter(parameter,
-                                          setpoints,
-                                          basis,
-                                          paramtype,
-                                          )
+            self._register_multiparameter(
+                parameter,
+                setpoints,
+                basis,
+                paramtype,
+            )
         elif isinstance(parameter, Parameter):
-            self._register_parameter(parameter.full_name,
-                                     parameter.label,
-                                     parameter.unit,
-                                     setpoints,
-                                     basis, paramtype)
+            self._register_parameter(
+                parameter.full_name,
+                parameter.label,
+                parameter.unit,
+                setpoints,
+                basis,
+                paramtype,
+            )
         else:
-            raise RuntimeError("Does not know how to register a parameter"
-                               f"of type {type(parameter)}")
+            raise RuntimeError(
+                "Does not know how to register a parameter" f"of type {type(parameter)}"
+            )
 
         return self
 
     @staticmethod
-    def _infer_paramtype(parameter: _BaseParameter,
-                         paramtype: Optional[str]) -> Optional[str]:
+    def _infer_paramtype(
+        parameter: _BaseParameter, paramtype: Optional[str]
+    ) -> Optional[str]:
         """
         Infer the best parameter type to store the parameter supplied.
 
@@ -837,23 +905,26 @@ class Measurement:
             return paramtype
 
         if isinstance(parameter.vals, vals.Arrays):
-            paramtype = 'array'
+            paramtype = "array"
         elif isinstance(parameter, ArrayParameter):
-            paramtype = 'array'
+            paramtype = "array"
         elif isinstance(parameter.vals, vals.Strings):
-            paramtype = 'text'
+            paramtype = "text"
         elif isinstance(parameter.vals, vals.ComplexNumbers):
-            paramtype = 'complex'
+            paramtype = "complex"
         # TODO should we try to figure out if parts of a multiparameter are
         # arrays or something else?
         return paramtype
 
-    def _register_parameter(self: T, name: str,
-                            label: Optional[str],
-                            unit: Optional[str],
-                            setpoints: Optional[setpoints_type],
-                            basis: Optional[setpoints_type],
-                            paramtype: str) -> T:
+    def _register_parameter(
+        self: T,
+        name: str,
+        label: Optional[str],
+        unit: Optional[str],
+        setpoints: Optional[setpoints_type],
+        basis: Optional[setpoints_type],
+        paramtype: str,
+    ) -> T:
         """
         Update the interdependencies object with a new group
         """
@@ -865,10 +936,9 @@ class Measurement:
         except KeyError:
             parameter = None
 
-        paramspec = ParamSpecBase(name=name,
-                                  paramtype=paramtype,
-                                  label=label,
-                                  unit=unit)
+        paramspec = ParamSpecBase(
+            name=name, paramtype=paramtype, label=label, unit=unit
+        )
 
         # We want to allow the registration of the exact same parameter twice,
         # the reason being that e.g. two ArrayParameters could share the same
@@ -876,8 +946,7 @@ class Measurement:
         # dependent (array)parameter
 
         if parameter is not None and parameter != paramspec:
-            raise ValueError("Parameter already registered "
-                             "in this Measurement.")
+            raise ValueError("Parameter already registered " "in this Measurement.")
 
         if setpoints is not None:
             sp_strings = [str(sp) for sp in setpoints]
@@ -890,69 +959,79 @@ class Measurement:
             bs_strings = []
 
         # get the ParamSpecBases
-        depends_on, inf_from = self._paramspecbase_from_strings(name,
-                                                                sp_strings,
-                                                                bs_strings)
+        depends_on, inf_from = self._paramspecbase_from_strings(
+            name, sp_strings, bs_strings
+        )
 
         if depends_on:
             self._interdeps = self._interdeps.extend(
-                                  dependencies={paramspec: depends_on})
+                dependencies={paramspec: depends_on}
+            )
         if inf_from:
-            self._interdeps = self._interdeps.extend(
-                                  inferences={paramspec: inf_from})
-        if not(depends_on or inf_from):
+            self._interdeps = self._interdeps.extend(inferences={paramspec: inf_from})
+        if not (depends_on or inf_from):
             self._interdeps = self._interdeps.extend(standalones=(paramspec,))
 
-        log.info(f'Registered {name} in the Measurement.')
+        log.info(f"Registered {name} in the Measurement.")
 
         return self
 
-    def _register_arrayparameter(self,
-                                 parameter: ArrayParameter,
-                                 setpoints: Optional[setpoints_type],
-                                 basis: Optional[setpoints_type],
-                                 paramtype: str, ) -> None:
+    def _register_arrayparameter(
+        self,
+        parameter: ArrayParameter,
+        setpoints: Optional[setpoints_type],
+        basis: Optional[setpoints_type],
+        paramtype: str,
+    ) -> None:
         """
         Register an ArrayParameter and the setpoints belonging to that
         ArrayParameter
         """
         my_setpoints = list(setpoints) if setpoints else []
         for i in range(len(parameter.shape)):
-            if parameter.setpoint_full_names is not None and \
-                    parameter.setpoint_full_names[i] is not None:
+            if (
+                parameter.setpoint_full_names is not None
+                and parameter.setpoint_full_names[i] is not None
+            ):
                 spname = parameter.setpoint_full_names[i]
             else:
-                spname = f'{parameter.full_name}_setpoint_{i}'
+                spname = f"{parameter.full_name}_setpoint_{i}"
             if parameter.setpoint_labels:
                 splabel = parameter.setpoint_labels[i]
             else:
-                splabel = ''
+                splabel = ""
             if parameter.setpoint_units:
                 spunit = parameter.setpoint_units[i]
             else:
-                spunit = ''
+                spunit = ""
 
-            self._register_parameter(name=spname,
-                                     paramtype=paramtype,
-                                     label=splabel,
-                                     unit=spunit,
-                                     setpoints=None,
-                                     basis=None)
+            self._register_parameter(
+                name=spname,
+                paramtype=paramtype,
+                label=splabel,
+                unit=spunit,
+                setpoints=None,
+                basis=None,
+            )
 
             my_setpoints += [spname]
 
-        self._register_parameter(parameter.full_name,
-                                 parameter.label,
-                                 parameter.unit,
-                                 my_setpoints,
-                                 basis,
-                                 paramtype)
+        self._register_parameter(
+            parameter.full_name,
+            parameter.label,
+            parameter.unit,
+            my_setpoints,
+            basis,
+            paramtype,
+        )
 
-    def _register_parameter_with_setpoints(self,
-                                           parameter: ParameterWithSetpoints,
-                                           setpoints: Optional[setpoints_type],
-                                           basis: Optional[setpoints_type],
-                                           paramtype: str) -> None:
+    def _register_parameter_with_setpoints(
+        self,
+        parameter: ParameterWithSetpoints,
+        setpoints: Optional[setpoints_type],
+        basis: Optional[setpoints_type],
+        paramtype: str,
+    ) -> None:
         """
         Register an ParameterWithSetpoints and the setpoints belonging to the
         Parameter
@@ -960,34 +1039,42 @@ class Measurement:
         my_setpoints = list(setpoints) if setpoints else []
         for sp in parameter.setpoints:
             if not isinstance(sp, Parameter):
-                raise RuntimeError("The setpoints of a "
-                                   "ParameterWithSetpoints "
-                                   "must be a Parameter")
+                raise RuntimeError(
+                    "The setpoints of a "
+                    "ParameterWithSetpoints "
+                    "must be a Parameter"
+                )
             spname = sp.full_name
             splabel = sp.label
             spunit = sp.unit
 
-            self._register_parameter(name=spname,
-                                     paramtype=paramtype,
-                                     label=splabel,
-                                     unit=spunit,
-                                     setpoints=None,
-                                     basis=None)
+            self._register_parameter(
+                name=spname,
+                paramtype=paramtype,
+                label=splabel,
+                unit=spunit,
+                setpoints=None,
+                basis=None,
+            )
 
             my_setpoints.append(spname)
 
-        self._register_parameter(parameter.full_name,
-                                 parameter.label,
-                                 parameter.unit,
-                                 my_setpoints,
-                                 basis,
-                                 paramtype)
+        self._register_parameter(
+            parameter.full_name,
+            parameter.label,
+            parameter.unit,
+            my_setpoints,
+            basis,
+            paramtype,
+        )
 
-    def _register_multiparameter(self,
-                                 multiparameter: MultiParameter,
-                                 setpoints: Optional[setpoints_type],
-                                 basis: Optional[setpoints_type],
-                                 paramtype: str) -> None:
+    def _register_multiparameter(
+        self,
+        multiparameter: MultiParameter,
+        setpoints: Optional[setpoints_type],
+        basis: Optional[setpoints_type],
+        paramtype: str,
+    ) -> None:
         """
         Find the individual multiparameter components and their setpoints
         and register those as individual parameters
@@ -1001,47 +1088,60 @@ class Measurement:
             else:
                 my_setpoints = list(setpoints) if setpoints else []
                 for j in range(len(shape)):
-                    if multiparameter.setpoint_full_names is not None and \
-                            multiparameter.setpoint_full_names[i] is not None:
+                    if (
+                        multiparameter.setpoint_full_names is not None
+                        and multiparameter.setpoint_full_names[i] is not None
+                    ):
                         spname = multiparameter.setpoint_full_names[i][j]
                     else:
-                        spname = f'{name}_setpoint_{j}'
-                    if multiparameter.setpoint_labels is not None and \
-                            multiparameter.setpoint_labels[i] is not None:
+                        spname = f"{name}_setpoint_{j}"
+                    if (
+                        multiparameter.setpoint_labels is not None
+                        and multiparameter.setpoint_labels[i] is not None
+                    ):
                         splabel = multiparameter.setpoint_labels[i][j]
                     else:
-                        splabel = ''
-                    if multiparameter.setpoint_units is not None and \
-                            multiparameter.setpoint_units[i] is not None:
+                        splabel = ""
+                    if (
+                        multiparameter.setpoint_units is not None
+                        and multiparameter.setpoint_units[i] is not None
+                    ):
                         spunit = multiparameter.setpoint_units[i][j]
                     else:
-                        spunit = ''
+                        spunit = ""
 
-                    self._register_parameter(name=spname,
-                                             paramtype=paramtype,
-                                             label=splabel,
-                                             unit=spunit,
-                                             setpoints=None,
-                                             basis=None)
+                    self._register_parameter(
+                        name=spname,
+                        paramtype=paramtype,
+                        label=splabel,
+                        unit=spunit,
+                        setpoints=None,
+                        basis=None,
+                    )
 
                     my_setpoints += [spname]
 
             setpoints_lists.append(my_setpoints)
 
         for i, setpoints in enumerate(setpoints_lists):
-            self._register_parameter(multiparameter.full_names[i],
-                                     multiparameter.labels[i],
-                                     multiparameter.units[i],
-                                     setpoints,
-                                     basis,
-                                     paramtype)
+            self._register_parameter(
+                multiparameter.full_names[i],
+                multiparameter.labels[i],
+                multiparameter.units[i],
+                setpoints,
+                basis,
+                paramtype,
+            )
 
     def register_custom_parameter(
-            self: T, name: str,
-            label: Optional[str] = None, unit: Optional[str] = None,
-            basis: Optional[setpoints_type] = None,
-            setpoints: Optional[setpoints_type] = None,
-            paramtype: str = 'numeric') -> T:
+        self: T,
+        name: str,
+        label: Optional[str] = None,
+        unit: Optional[str] = None,
+        basis: Optional[setpoints_type] = None,
+        setpoints: Optional[setpoints_type] = None,
+        paramtype: str = "numeric",
+    ) -> T:
         """
         Register a custom parameter with this measurement
 
@@ -1059,15 +1159,9 @@ class Measurement:
                 are the setpoints of this parameter
             paramtype: Type of the parameter, i.e. the SQL storage class
         """
-        return self._register_parameter(name,
-                                        label,
-                                        unit,
-                                        setpoints,
-                                        basis,
-                                        paramtype)
+        return self._register_parameter(name, label, unit, setpoints, basis, paramtype)
 
-    def unregister_parameter(self,
-                             parameter: setpoints_type) -> None:
+    def unregister_parameter(self, parameter: setpoints_type) -> None:
         """
         Remove a custom/QCoDeS parameter from the dataset produced by
         running this measurement
@@ -1077,8 +1171,10 @@ class Measurement:
         elif isinstance(parameter, str):
             param = parameter
         else:
-            raise ValueError('Wrong input type. Must be a QCoDeS parameter or'
-                             ' the name (a string) of a parameter.')
+            raise ValueError(
+                "Wrong input type. Must be a QCoDeS parameter or"
+                " the name (a string) of a parameter."
+            )
 
         try:
             paramspec: ParamSpecBase = self._interdeps[param]
@@ -1087,7 +1183,7 @@ class Measurement:
 
         self._interdeps = self._interdeps.remove(paramspec)
 
-        log.info(f'Removed {param} from Measurement.')
+        log.info(f"Removed {param} from Measurement.")
 
     def add_before_run(self: T, func: Callable[..., Any], args: Sequence[Any]) -> T:
         """
@@ -1100,15 +1196,16 @@ class Measurement:
         # some tentative cheap checking
         nargs = len(signature(func).parameters)
         if len(args) != nargs:
-            raise ValueError('Mismatch between function call signature and '
-                             'the provided arguments.')
+            raise ValueError(
+                "Mismatch between function call signature and "
+                "the provided arguments."
+            )
 
         self.enteractions.append((func, args))
 
         return self
 
-    def add_after_run(self: T,
-                      func: Callable[..., Any], args: Sequence[Any]) -> T:
+    def add_after_run(self: T, func: Callable[..., Any], args: Sequence[Any]) -> T:
         """
         Add an action to be performed after the measurement.
 
@@ -1119,17 +1216,19 @@ class Measurement:
         # some tentative cheap checking
         nargs = len(signature(func).parameters)
         if len(args) != nargs:
-            raise ValueError('Mismatch between function call signature and '
-                             'the provided arguments.')
+            raise ValueError(
+                "Mismatch between function call signature and "
+                "the provided arguments."
+            )
 
         self.exitactions.append((func, args))
 
         return self
 
     def add_subscriber(
-            self: T,
-            func: Callable[..., Any],
-            state: Union[MutableSequence[Any], MutableMapping[Any, Any]]
+        self: T,
+        func: Callable[..., Any],
+        state: Union[MutableSequence[Any], MutableMapping[Any, Any]],
     ) -> T:
         """
         Add a subscriber to the dataset of the measurement.
@@ -1153,12 +1252,12 @@ class Measurement:
             shapes: Dictionary from names of dependent parameters to a tuple
                 of integers describing the shape of the measurement.
         """
-        RunDescriber._verify_interdeps_shape(interdeps=self._interdeps,
-                                             shapes=shapes)
+        RunDescriber._verify_interdeps_shape(interdeps=self._interdeps, shapes=shapes)
         self._shapes = shapes
 
-    def run(self, write_in_background: Optional[bool] = None,
-            in_memory_cache: bool = True) -> Runner:
+    def run(
+        self, write_in_background: Optional[bool] = None, in_memory_cache: bool = True
+    ) -> Runner:
         """
         Returns the context manager for the experimental run
 
@@ -1174,14 +1273,18 @@ class Measurement:
         """
         if write_in_background is None:
             write_in_background = qc.config.dataset.write_in_background
-        return Runner(self.enteractions, self.exitactions,
-                      self.experiment, station=self.station,
-                      write_period=self._write_period,
-                      interdeps=self._interdeps,
-                      name=self.name,
-                      subscribers=self.subscribers,
-                      parent_datasets=self._parent_datasets,
-                      extra_log_info=self._extra_log_info,
-                      write_in_background=write_in_background,
-                      shapes=self._shapes,
-                      in_memory_cache=in_memory_cache)
+        return Runner(
+            self.enteractions,
+            self.exitactions,
+            self.experiment,
+            station=self.station,
+            write_period=self._write_period,
+            interdeps=self._interdeps,
+            name=self.name,
+            subscribers=self.subscribers,
+            parent_datasets=self._parent_datasets,
+            extra_log_info=self._extra_log_info,
+            write_in_background=write_in_background,
+            shapes=self._shapes,
+            in_memory_cache=in_memory_cache,
+        )

@@ -18,7 +18,7 @@ def plot_fit(xs, ys, axis, yerr=None, fit_func="sine"):
             xs,
             ys,
             yerr=yerr,
-            marker="s",
+            marker="o",
             ls="none",
             markersize=3,
             color="b",
@@ -36,6 +36,8 @@ def plot_fit(xs, ys, axis, yerr=None, fit_func="sine"):
     label_text = "\n".join(param_val_list)
 
     axis.plot(xs, fit_ys, color="m", lw=3, label=label_text)
+    # plt.xlabel("time clock")
+    # plt.ylabel("amps")
 
     return params
 
