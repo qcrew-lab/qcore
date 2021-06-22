@@ -15,7 +15,7 @@ MEAS_NAME = "time_rabi"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 30000
+reps = 20000
 wait_time = 75000  # in clock cycles
 
 # Measurement pulse
@@ -38,7 +38,7 @@ t_list = np.arange(t_start, t_stop, t_step)
 qubit_ascale = 2
 qubit = stg.qubit
 qubit_f = qubit.int_freq  # IF frequency of qubit pulse
-qubit_op = "CW"  # qubit operation as defined in config
+qubit_op = "pi"  # qubit operation as defined in config
 
 # Rearranges the input parameters in arrays over which QUA can
 # iterate. The arrays are given in the order of outer to inner
@@ -136,7 +136,6 @@ while remaining_data != 0:
     Q = raw_data["Q"]
     d = np.abs(I + 1j * Q)
     std_err = np.std(d, axis=0) / np.sqrt(d.shape[0])
-
     remaining_data -= N
 
     # plot averaged data

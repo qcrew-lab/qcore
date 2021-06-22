@@ -200,6 +200,7 @@ class DataSaver:
                     )
                 )
             else:
+
                 results_dict.update(self._unpack_partial_result(partial_result))
 
         self._validate_result_deps(results_dict)
@@ -247,6 +248,7 @@ class DataSaver:
         that dict
         """
         param, values = partial_result
+
         try:
             parameter = self._interdeps._id_to_paramspec[str(param)]
         except KeyError:

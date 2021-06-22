@@ -1,10 +1,10 @@
 from numpy import datetime_data
 from qcodes.instrument.parameter import ParameterWithSetpoints
-from experiment import load_or_create_experiment, create_experiment
-from dataset_hdf5 import *
-from measurement import Measurement
+from qcrew.codebase.database.experiment import load_or_create_experiment, create_experiment
+from qcrew.codebase.database.dataset_hdf5 import *
+from qcrew.codebase.database.measurement import Measurement
 from qcodes import Parameter, Station, ArrayParameter
-from database import initialise_today_database_at
+from qcrew.codebase.database.database import initialise_today_database_at
 from pathlib import Path
 import qcodes as qc
 import qcodes.utils.validators as vals
@@ -38,7 +38,7 @@ from numpy.random import rand
 
 # initialise the database
 database_name = "test_database"
-database_path = Path("C:\data")
+database_path = Path.cwd() / "data"
 initialise_today_database_at(name=database_name, path=database_path)
 print(qc.config.core.db_location)
 
@@ -139,7 +139,6 @@ with meas.run() as datasaver:
     path_to_db = Path(dataset_test.path_to_db)
     metadata = {"a": 50, "b": 100, "c": "unit"}
     dataset_test.add_metadata("config", metadata=metadata)
-    dataset_test.get_parameter_data()
 
 # # another meas.run() will create a new run group
 # path_to_db = Path()
@@ -154,17 +153,17 @@ with meas.run() as datasaver:
 # experiment1.finish()
 
 # Check the data in h5 file
-import h5py
+# import h5py
 
-f = h5py.File(path_to_db)
-print(f.keys())
-f["time_rabi#coax_A#1"]
-exp_group = f["time_rabi#coax_A#1"]
-exp_group.keys()
-run1_group = exp_group["run#19"]
-run1_group.keys()
-run1_group.attrs["metadata"]
-run1_group.attrs.keys()
-run1_group.attrs["run_timestamp"]
-data_group = run1_group["data"]
-data_group.keys()
+# f = h5py.File(path_to_db)
+# print(f.keys())
+# f["time_rabi#coax_A#1"]
+# exp_group = f["time_rabi#coax_A#1"]
+# exp_group.keys()
+# run1_group = exp_group["run#19"]
+# run1_group.keys()
+# run1_group.attrs["metadata"]
+# run1_group.attrs.keys()
+# run1_group.attrs["run_timestamp"]
+# data_group = run1_group["data"]
+# data_group.keys()

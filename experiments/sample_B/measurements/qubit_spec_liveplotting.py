@@ -19,9 +19,9 @@ wait_time = 80000  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-f_start = -49.5e6
-f_stop = -46.5e6
-f_step = 0.01e6
+f_start = -50e6
+f_stop = -45e6
+f_step = 0.02e6
 qubit_f_list = np.arange(f_start, f_stop, f_step)
 qubit_ascale = 1.6
 qubit_op = "CW"  # qubit operation as defined in config
@@ -29,7 +29,7 @@ qubit_op = "CW"  # qubit operation as defined in config
 # Measurement pulse
 rr = stg.rr
 rr_f = rr.int_freq
-rr_ascale = 0.0195
+rr_ascale = 0.0175
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q

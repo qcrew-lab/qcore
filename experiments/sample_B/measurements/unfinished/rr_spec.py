@@ -13,7 +13,7 @@ MEAS_NAME = "rr_spec"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 3000
+reps = 120
 wait_time = 10000  # in clock cycles
 
 # Measurement pulse
@@ -67,6 +67,8 @@ with program() as rr_spec:
     with stream_processing():
         I_stream.buffer(len(rr_f_list)).average().save("I_mem")
         Q_stream.buffer(len(rr_f_list)).average().save("Q_mem")
+        I_stream.buffer(len(rr_f_list)).average().save_all("I_raw")
+        Q_stream.buffer(len(rr_f_list)).average().save_all("Q_raw")
 
 ########################################################################################
 ############################           GET RESULTS         #############################

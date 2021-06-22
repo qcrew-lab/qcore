@@ -14,15 +14,15 @@ MEAS_NAME = "rr_spec"  # used for naming the saved data file
 
 # Loop parameters
 reps = 3000
-wait_time = 10000  # in clock cycles
+wait_time = 75000  # in clock cycles
 
 # Measurement pulse
 rr = stg.rr
 f_start = -51e6
-f_stop = -48e6
-f_step = 0.01e6
+f_stop = -46e6
+f_step = 0.05e6
 rr_f_list = np.arange(f_start, f_stop, f_step)
-rr_ascale = 0.017
+rr_ascale = 0.0175
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q

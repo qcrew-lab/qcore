@@ -1,5 +1,6 @@
 # import all objects defined in the __init__.py file in the 'imports' folder
 from qcrew.experiments.sample_B.imports import *
+
 reload(cfg), reload(stg)  # reloads modules before executing the code below
 
 # NOTE: make changes to lo, if, tof, mixer offsets in 'configuration.py'
@@ -11,10 +12,10 @@ MEAS_NAME = "tof_calib"  # used for naming the saved data file
 ########################           MEASUREMENT SEQUENCE         ########################
 ########################################################################################
 SAMPLING_RATE = 1e9
-ADC_RESOLUTION = 2**12
+ADC_RESOLUTION = 2 ** 12
 reps = 20000
 wait_time = 20000
-amp_scale = 0.15#0.015
+amp_scale = 0.15  # 0.015
 with program() as tof_calib:
     adc_stream = declare_stream(adc_trace=True)
     n = declare(int)

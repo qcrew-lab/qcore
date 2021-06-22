@@ -28,14 +28,14 @@ integW2 = "integW2"  # integration weight for Q
 # Wait time between two pulses in clock cycles
 t_start = 1  # must be integer >= 4, this is in multiples of 4 ns.
 t_stop = 1500
-t_step = 5
+t_step = 10
 t_list = np.arange(t_start, t_stop, t_step)
 
 
 # Qubit pulse
-detuning = 0.4e6 #0.7e6  # 700e3  # 0.05e6  # Qubit drive detuning
+detuning = 0.42e6  # 0.7e6  # 700e3  # 0.05e6  # Qubit drive detuning
 qubit = stg.qubit
-qubit_ascale = 2 #-1.1 / 2
+qubit_ascale = 2  # -1.1 / 2
 qubit_f = qubit.int_freq - detuning  # IF of qubit pulse
 qubit_op = "pi2"  # pi/2 qubit operation as defined in config
 
@@ -119,7 +119,7 @@ while remaining_data != 0:
     remaining_data -= N
 
     # plot averaged data
-    #ax.scatter(t_list, amps, s=4)
+    # ax.scatter(t_list, amps, s=4)
 
     # plot fitted curve
     params = plot_fit(t_list, amps, ax, yerr=std_err, fit_func="exp_decay_sine")

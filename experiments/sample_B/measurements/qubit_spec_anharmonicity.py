@@ -16,11 +16,11 @@ MEAS_NAME = "qubit_spec"  # used for naming the saved data file
 
 # Loop parameters
 reps = 8000
-wait_time = 75000  # in clock cycles
+wait_time = 200000  # in clock cycles
 
 # Measurement pulse
 update_rr_if = True
-rr_if =  int(-49.4e6) #-49.5e+6
+rr_if = int(-49.4e6) 
 rr_if = int(rr_if)
 rr = stg.rr
 
@@ -32,12 +32,12 @@ integW2 = "integW2"  # integration weight for Q
 
 # Parameters for optional qubit pulse
 play_qubit = True
-qubit_ascale = 1.5
+qubit_ascale = 2
 # qubit_f = -50e+6  # IF frequency of qubit pulse
 qubit_op = "saturation"  # qubit operation as defined in config
 f_start = -50e+6
-f_stop = -45e+6
-f_step = 0.02e+6
+f_stop = 50e+6
+f_step = 0.1e+6
 qubit_f_list = np.arange(f_start, f_stop, f_step)
 
 # Rearranges the input parameters in arrays over which QUA can
