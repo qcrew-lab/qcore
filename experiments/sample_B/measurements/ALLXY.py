@@ -13,7 +13,7 @@ MEAS_NAME = "allxy"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 200000
+reps = 100000
 wait_time = 75000  # in clock cycles
 
 # Qubit pulse
@@ -29,61 +29,57 @@ rr_op = "readout"
 integW1, integW2 = "integW1", "integW2"  # integration weight for I
 # NOTE: The weights must be defined in configuration.py for the chosen msmt operation
 
-# the gaussian scales of first and second gate
-f_ascale = 1.71
-s_ascale = 1.71
+gate_list = np.array(
+    [
+        [0.0, 0, 0.0, 0, "IdId"],  # IdId
+        [1.0, 0, 1.0, 0, "XpXp"],  # XpXp
+        [1.0, 0.25, 1.0, 0.25, "YpYp"],  # YpYp
+        [1.0, 0, 1.0, 0.25, "XpYp"],  # XpYp
+        [1.0, 0.25, 1.0, 0, "YpXp"],  # YpXp
+        [0.5, 0, 0.0, 0, "X9Id"],  # X9Id
+        [0.5, 0.25, 0.0, 0, "Y9Id"],  # Y9Id
+        [0.5, 0, 0.5, 0.25, "X9Y9"],  # X9Y9
+        [0.5, 0.25, 0.5, 0, "Y9X9"],  # Y9X9
+        [0.5, 0, 1.0, 0.25, "X9Yp"],  # X9Yp
+        [0.5, 0.25, 1.0, 0, "Y9Xp"],  # Y9Xp
+        [1.0, 0, 0.5, 0.25, "XpY9"],  # XpY9
+        [1.0, 0.25, 0.5, 0, "YpX9"],  # YpX9
+        [0.5, 0, 1.0, 0, "X9Xp"],  # X9Xp
+        [1.0, 0, 0.5, 0, "XpX9"],  # XpX9
+        [0.5, 0.25, 1.0, 0.25, "Y9Yp"],  # Y9Yp
+        [1.0, 0.25, 0.5, 0.25, "YpY9"],  # YpY9
+        [1.0, 0, 0.0, 0, "XpId"],  # XpId
+        [1.0, 0.25, 0.0, 0, "YpId"],  # YpId
+        [0.5, 0, 0.5, 0, "X9X9"],  # X9X9
+        [0.5, 0.25, 0.5, 0.25, "Y9Y9"],  # Y9Y9
+    ]
+)
 
 # gate_list = np.array(
 #     [
 #         [0.0, 0, 0.0, 0, "IdId"],  # IdId
-#         [1.0, 0, 1.0, 0, "XpXp"],  # XpXp
-#         [1.0, 0.25, 1.0, 0.25, "YpYp"],  # YpYp
-#         [1.0, 0, 1.0, 0.25, "XpYp"],  # XpYp
-#         [1.0, 0.25, 1.0, 0, "YpXp"],  # YpXp
-#         [0.5, 0, 0.0, 0, "X9Id"],  # X9Id
-#         [0.5, 0.25, 0.0, 0, "Y9Id"],  # Y9Id
-#         [0.5, 0, 0.5, 0.25, "X9Y9"],  # X9Y9
-#         [0.5, 0.25, 0.5, 0, "Y9X9"],  # Y9X9
-#         [0.5, 0, 1.0, 0.25, "X9Yp"],  # X9Yp
-#         [0.5, 0.25, 1.0, 0, "Y9Xp"],  # Y9Xp
-#         [1.0, 0, 0.5, 0.25, "XpY9"],  # XpY9
-#         [1.0, 0.25, 0.5, 0, "YpX9"],  # YpX9
-#         [0.5, 0, 1.0, 0, "X9Xp"],  # X9Xp
-#         [1.0, 0, 0.5, 0, "XpX9"],  # XpX9
-#         [0.5, 0.25, 1.0, 0.25, "Y9Yp"],  # Y9Yp
-#         [1.0, 0.25, 0.5, 0.25, "YpY9"],  # YpY9
-#         [1.0, 0, 0.0, 0, "XpId"],  # XpId
-#         [1.0, 0.25, 0.0, 0, "YpId"],  # YpId
-#         [0.5, 0, 0.5, 0, "X9X9"],  # X9X9
-#         [0.5, 0.25, 0.5, 0.25, "Y9Y9"],  # Y9Y9
+#         [f_ascale, 0, s_ascale, 0, "XpXp"],  # XpXp
+#         [f_ascale, 0.25, s_ascale, 0.25, "YpYp"],  # YpYp
+#         [f_ascale, 0, s_ascale, 0.25, "XpYp"],  # XpYp
+#         [f_ascale, 0.25, s_ascale, 0, "YpXp"],  # YpXp
+#         [f_ascale / 2, 0, 0.0, 0, "X9Id"],  # X9Id
+#         [f_ascale / 2, 0.25, 0.0, 0, "Y9Id"],  # Y9Id
+#         [f_ascale / 2, 0, s_ascale / 2, 0.25, "X9Y9"],  # X9Y9
+#         [f_ascale / 2, 0.25, s_ascale / 2, 0, "Y9X9"],  # Y9X9
+#         [f_ascale / 2, 0, s_ascale, 0.25, "X9Yp"],  # X9Yp
+#         [f_ascale / 2, 0.25, s_ascale, 0, "Y9Xp"],  # Y9Xp
+#         [f_ascale, 0, s_ascale / 2, 0.25, "XpY9"],  # XpY9
+#         [f_ascale, 0.25, s_ascale / 2, 0, "YpX9"],  # YpX9
+#         [f_ascale / 2 , 0, s_ascale, 0, "X9Xp"],  # X9Xp
+#         [f_ascale, 0, s_ascale / 2, 0, "XpX9"],  # XpX9
+#         [f_ascale / 2, 0.25, s_ascale, 0.25, "Y9Yp"],  # Y9Yp
+#         [f_ascale, 0.25, s_ascale / 2, 0.25, "YpY9"],  # YpY9
+#         [f_ascale, 0, 0.0, 0, "XpId"],  # XpId
+#         [f_ascale, 0.25, 0.0, 0, "YpId"],  # YpId
+#         [f_ascale / 2, 0, s_ascale / 2, 0, "X9X9"],  # X9X9
+#         [f_ascale /2, 0.25, s_ascale / 2, 0.25, "Y9Y9"],  # Y9Y9
 #     ]
 # )
-
-gate_list = np.array(
-    [
-        [0.0, 0, 0.0, 0, "IdId"],  # IdId
-        [f_ascale, 0, s_ascale, 0, "XpXp"],  # XpXp
-        [f_ascale, 0.25, s_ascale, 0.25, "YpYp"],  # YpYp
-        [f_ascale, 0, s_ascale, 0.25, "XpYp"],  # XpYp
-        [f_ascale, 0.25, s_ascale, 0, "YpXp"],  # YpXp
-        [f_ascale / 2, 0, 0.0, 0, "X9Id"],  # X9Id
-        [f_ascale / 2, 0.25, 0.0, 0, "Y9Id"],  # Y9Id
-        [f_ascale / 2, 0, s_ascale / 2, 0.25, "X9Y9"],  # X9Y9
-        [f_ascale / 2, 0.25, s_ascale / 2, 0, "Y9X9"],  # Y9X9
-        [f_ascale / 2, 0, s_ascale, 0.25, "X9Yp"],  # X9Yp
-        [f_ascale / 2, 0.25, s_ascale, 0, "Y9Xp"],  # Y9Xp
-        [f_ascale, 0, s_ascale / 2, 0.25, "XpY9"],  # XpY9
-        [f_ascale, 0.25, s_ascale / 2, 0, "YpX9"],  # YpX9
-        [f_ascale / 2 , 0, s_ascale, 0, "X9Xp"],  # X9Xp
-        [f_ascale, 0, s_ascale / 2, 0, "XpX9"],  # XpX9
-        [f_ascale / 2, 0.25, s_ascale, 0.25, "Y9Yp"],  # Y9Yp
-        [f_ascale, 0.25, s_ascale / 2, 0.25, "YpY9"],  # YpY9
-        [f_ascale, 0, 0.0, 0, "XpId"],  # XpId
-        [f_ascale, 0.25, 0.0, 0, "YpId"],  # YpId
-        [f_ascale / 2, 0, s_ascale / 2, 0, "X9X9"],  # X9X9
-        [f_ascale /2, 0.25, s_ascale / 2, 0.25, "Y9Y9"],  # Y9Y9
-    ]
-)
 
 # Repeat each gate twice
 # gate_list = np.repeat(gate_list, 2, axis=0)
@@ -173,7 +169,7 @@ ax = fig.add_subplot(1, 1, 1)
 hdisplay = display.display("", display_id=True)
 raw_data = {}
 result_handles = job.result_handles
-N = 200  # Maximum size of data batch for each refresh
+N = 1000  # Maximum size of data batch for each refresh
 remaining_data = reps
 while remaining_data != 0:
     # clear data from plot

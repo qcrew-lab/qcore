@@ -42,18 +42,23 @@ start_time = time.perf_counter()
 # initilise the database
 initialise_today_database_at(name=DATABASE_NAME, path=DATAPATH_PATH)
 print(qc.config.core.db_location)
+#structure: data/main_proj_folder (e.g. squeezed cat)/folder (today's date)/file_name.h5 (file_name = timestamp_expname_others)
 
 # create experiment
 rr_spectroscopy = load_or_create_experiment(
     experiment_name=EXP_NAME, sample_name=SAMPLE_NAME
 )
+# comment: get rid of this. We do not wnat to use the qcodes expeirment class now. 
 
 # create the station
 # "station" is the group of the instruments
 station = Station()
+#get rid of this, we have our own (e.g. the stage) - already has some meta data saving v3. to disuss with Atharv. 
 
 # create measurement
 meas = Measurement(exp=rr_spectroscopy, name=DATABASE_NAME, station=station)
+# remove this, we do not want to re-instanciate another meausrement. Also, we want to elimate the dependency on the qcodes Measurment.py class object. 
+
 ############################
 #  Parameters
 ############################
@@ -83,7 +88,7 @@ QUBIT_IF = int(-48.35e6)  # IF frequency of qubit pulse
 QUBIT_OP = "gaussian"  # qubit operation as defined in config
 
 
-
+''''
 n_points = Parameter('n_points',
                     unit='',
                     initial_value=5000,
@@ -99,6 +104,9 @@ rr_if = Parameter("rr_if",
                     vals=vals.Arrays(shape=(sweep_points,)))
 
 reps = Parameter("reps", get_cmd=None)
+''''
+# We dont need this for saving these experimental parameters. 
+
 
 # https://github.com/QCoDeS/Qcodes/blob/master/docs/examples/Parameters/Simple-Example-of-ParameterWithSetpoints.ipynb
 I_raw = ParameterWithSetpoints(
@@ -202,28 +210,10 @@ with program() as rr_spec:
         I_stream.buffer(len(rr_f_list)).average().save_all("I_avg_raw")
         Q_stream.buffer(len(rr_f_list)).average().save_all("Q_avg_raw")
 
-# # test
-
-# job = stg.qm.execute(rr_spec)  # run measurement
-# print(f"{EXP_NAME} in progress...")  # log message
-# handle = job.result_handles
-# handle.wait_for_all_values()
-# result_I_raw = handle.get("I_raw")
-# result_Q_raw = handle.get("Q_raw")
-# avg_result_I_raw = handle.get("I_avg_raw")
-# avg_result_Q_raw = handle.get("Q_avg_raw")
-# i = result_I_raw.fetch_all(flat_struct= True)
-# q = result_Q_raw.fetch_all(flat_struct= True)
-# avg_i=  avg_result_I_raw.fetch_all(flat_struct= True)
-# avg_q = avg_result_Q_raw.fetch_all(flat_struct= True)
-# print(i.shape)
-# print(q.shape)
-# print(avg_i.shape)
-# print(avg_q.shape)
 ############################
 # measurement
 ############################
-with meas.run() as datasaver:
+with meas.run() as datasaver: #this handles opening and closing files, but we do not need to have dependencies on the mesaurement class. 
 
     #############################
     # implement the job
@@ -256,6 +246,9 @@ with meas.run() as datasaver:
         num_so_far = result_I_raw.count_so_far()
         test = result_I_raw.fetch_all(flat_struct=True)
 
+        #step 1: fetch available data 
+        #step 2: datasaver.add_results()
+
         # same as: num_so_far = len(result_I_raw)  # get result count so far
         if (num_so_far - num_have_got > 0) and num_so_far > 1:
             sliced_result_I_raw = result_I_raw.fetch(slice(num_have_got + 1, num_so_far +1), flat_struct=True)
@@ -264,7 +257,7 @@ with meas.run() as datasaver:
             sliced_result_Q_avg_raw = result_Q_avg_raw.fetch(slice(num_have_got + 1, num_so_far +1), flat_struct=True)
 
             # "num_so_far + 1" make sure num_so_far is inclusive
-            
+            '''
             for index in range(num_have_got + 1, num_so_far):
 
                 # live saving the raw data of I and Q and abs(I+jQ) 
@@ -285,7 +278,7 @@ with meas.run() as datasaver:
                     (Q_avg_raw, sliced_result_Q_avg_raw[index - num_have_got -1]),
                     (v_avg_raw,np.abs(sliced_result_I_avg_raw[index - num_have_got -1]
                             + 1j * sliced_result_Q_avg_raw[index - num_have_got -1])),(rr_if, rr_f_list))
-            
+            ''' #redundant 
             
             # update the num_have_got to the current fetch number
             num_have_got = num_so_far

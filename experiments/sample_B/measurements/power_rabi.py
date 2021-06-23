@@ -15,21 +15,22 @@ MEAS_NAME = "power_rabi"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 20000
+reps = 100000
 wait_time = 75000  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-a_start = -2
-a_stop = 2
-a_step = 0.03
+a_start = -1.1
+a_stop = 1.1
+a_step = 0.05
 qubit_a_list = np.arange(a_start, a_stop, a_step)
 qubit_f = qubit.int_freq
-qubit_op = "gaussian"  # qubit operation as defined in config
+qubit_op = "pi"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
 rr_f = rr.int_freq
+
 rr_ascale = 0.0175
 rr_op = "readout"
 integW1 = "integW1"  # integration weight for I
@@ -39,13 +40,11 @@ integW2 = "integW2"  # integration weight for Q
 angle_ascale = 0.25 #  0~1 corresponding to the 0~2pi of the frame rotation
 
 with program() as power_rabi:
-    
     n = declare(int)
     a = declare(fixed)
+
     I = declare(fixed)
     Q = declare(fixed)
-
-
     I_st = declare_stream()
     Q_st = declare_stream()
     I_st_avg = declare_stream()
@@ -56,10 +55,12 @@ with program() as power_rabi:
 
     with for_(n, 0, n < reps, n + 1):
         with for_(a, a_start, a < a_stop, a + a_step):
-            reset_frame(qubit.name)
-            frame_rotation_2pi(angle_ascale, qubit.name)  
+            
+            #align(qubit.name, rr.name)
+            #reset_frame(qubit.name)
+            #frame_rotation_2pi(angle_ascale, qubit.name) 
             play(qubit_op * amp(a), qubit.name)
-            frame_rotation_2pi(-angle_ascale, qubit.name)  
+            #frame_rotation_2pi(-angle_ascale, qubit.name) 
             
             align(qubit.name, rr.name)
             measure(
@@ -74,7 +75,7 @@ with program() as power_rabi:
             save(Q, Q_st_avg)
             save(I, I_st)
             save(Q, Q_st)
-            #reset_frame(qubit.name)
+            reset_frame(qubit.name)
              
     with stream_processing():
         I_st_avg.buffer(len(qubit_a_list)).average().save_all("I_avg")
@@ -93,36 +94,38 @@ ax = fig.add_subplot(1, 1, 1)
 hdisplay = display.display("", display_id=True)
 raw_data = {}
 result_handles = job.result_handles
-N = 100  # Maximum size of data batch for each refresh
+N = 500  # Maximum size of data batch for each refresh
 remaining_data = reps
 while remaining_data != 0:
-    # clear data
+    # clear data from plot
     ax.clear()
 
     # update data
     N = min(N, remaining_data)  # don't wait for more than there's left
-    raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg", "I", "Q"])
-    I_avg = raw_data["I_avg"][-1]
-    Q_avg = raw_data["Q_avg"][-1]
-    amps = np.abs(I_avg + 1j * Q_avg)
-
+    raw_data = update_results(raw_data, N, result_handles, ["I", "Q"])
     I = raw_data["I"]
     Q = raw_data["Q"]
-    d = np.abs(I + 1j * Q)
-    std_err = np.std(d, axis=0) / np.sqrt(d.shape[0])
+    I_avg = np.average(I, axis=0)
+    Q_avg = np.average(Q, axis=0)
+
+    # process data
+    amps = np.abs(I + 1j * Q)
+    amps_avg = np.abs(I_avg + 1j * Q_avg)  # Must average before taking the amp
+    std_err = np.std(amps, axis=0) / np.sqrt(amps.shape[0])
     remaining_data -= N
 
-    # plot averaged data
-    #ax.plot(qubit_a_list, amps, ls="None", marker="s")
+    # plot fitted curve with errorbars
+    params = plot_fit(qubit_a_list, amps_avg, ax, yerr=std_err, fit_func="sine")
 
-    # plot fitted curve
-    ax.errorbar(qubit_a_list, amps, yerr=std_err, fmt='o')
-    params = plot_fit(qubit_a_list, amps, ax, yerr=std_err, fit_func="sine")
+    # customize figure
     ax.set_title("average of %d results" % (reps - remaining_data))
-    # ax.legend(['pi-amp scaling = '% (0.5/params['f0'])])
+    ax.legend(loc="upper left", bbox_to_anchor=(0, -0.1))  # Relocate legend box
 
     # update figure
     hdisplay.update(fig)
+
+# please see "qm_get_results.py" in "analysis" package in "codebase" for an attempt
+# to get partial results from QM
 
 ########################################################################################
 ############################           SAVE RESULTS         ############################
@@ -137,10 +140,11 @@ print(datapath)
 print(imgpath)
 with datapath.open("w") as f:
     f.write(metadata)
-    np.savetxt(datapath, [qubit_a_list, amps], delimiter=",")
+    np.savetxt(datapath, [qubit_a_list, amps_avg], delimiter=",")
 
 plt.savefig(imgpath)
 
 ########################################################################################
 ########################################################################################
 ########################################################################################
+
