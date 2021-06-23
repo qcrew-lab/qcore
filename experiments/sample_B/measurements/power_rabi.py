@@ -61,7 +61,7 @@ with program() as power_rabi:
             #frame_rotation_2pi(angle_ascale, qubit.name) 
             play(qubit_op * amp(a), qubit.name)
             #frame_rotation_2pi(-angle_ascale, qubit.name) 
-            
+            play(qubit_op * amp(a), qubit.name)
             align(qubit.name, rr.name)
             measure(
                 rr_op * amp(rr_ascale),

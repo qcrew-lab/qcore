@@ -99,16 +99,16 @@ gaussian_drag_pulse_len = len(gaussian_derivative_wf_samples)
 
 ################################### EXCLUSIVE PULSES ###################################
 # qubit square pi and pi2 pulses
-sq_pi_len =  512  # must be an integer multiple of 4 >= 16
+sq_pi_len = 512  # must be an integer multiple of 4 >= 16
 sq_pi2_len = 256  # must be an integer multiple of 4 >= 16
 sq_pi_amp = 0.25 * 2  # must be float in the interval (-0.5, 0.5)
-sq_pi2_amp =0.25 * 2
+sq_pi2_amp = 0.25 * 2
 # Notice:
 # Here the initial voltage has been set as the maximum 0.5, double of 0.25
 # In the script, the square pi pulse relative amplitude ascale has to be set as 1
 
 # qubit gaussian pi pulse
-gauss_pi_amp = 0.25 * 1.71
+gauss_pi_amp = 0.25 * 1.71  ##0.25 * 1.71
 gauss_pi_sigma = 180
 gauss_pi_chop = 5
 gauss_pi_samples = gaussian_fn(gauss_pi_amp, gauss_pi_sigma, gauss_pi_chop)
@@ -163,14 +163,14 @@ config = {
             "digital_outputs": {},
             "analog_inputs": {
                 rr_ports["out"]: {"offset": 0.0},
-                },
+            },
         }
     },
     "elements": {
         "qubit": {
             "mixInputs": {
-                "I": ("con1",  qubit_ports["I"]),
-                "Q": ("con1",  qubit_ports["Q"]),
+                "I": ("con1", qubit_ports["I"]),
+                "Q": ("con1", qubit_ports["Q"]),
                 "lo_frequency": int(qubit_LO),
                 "mixer": "mixer_qubit",
             },
@@ -202,7 +202,7 @@ config = {
                 "readout": "readout_pulse",
             },
             "outputs": {"out1": ("con1", rr_ports["out"])},
-            "time_of_flight": rr_time_of_flight,  
+            "time_of_flight": rr_time_of_flight,
             "smearing": 12,
         },
     },
