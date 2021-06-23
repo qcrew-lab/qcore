@@ -10,9 +10,24 @@ import h5py
 import numpy as np
 import logging as log
 from uncertainties import UFloat
+from pathlib import Path
+from typing import Union, Optional, Dict
+import logging 
+
+log = logging.getLogger(__name__)
 ########################################
 #          helper function
 ########################################
+
+import datetime
+def validate(date_text) ->str:
+    try:
+        datetime.datetime.strptime(date_text, "%Y%m%d")
+        return date_text
+    except ValueError:
+        raise ValueError("Incorrect data format, should be YYYYMMDD")
+
+
 def encode_to_utf8(s):
     """
     Required because h5py does not support python3 strings
@@ -290,6 +305,7 @@ def extract_pars_from_datafile(param_spec: dict, filepath: str = None, entry_poi
                     raise err
 
     elif (filepath is None) and (entry_point is not None):
+        param_dict = {}
         for par_name, par_spec in param_spec.items():
                 try:
                     f = entry_point
@@ -317,7 +333,7 @@ def extract_pars_from_datafile(param_spec: dict, filepath: str = None, entry_poi
         
     return param_dict
 ########################################
-#           class 
+# class 
 ########################################
 class DateTimeGenerator(object):
     """
@@ -434,17 +450,17 @@ class DateTimeGenerator(object):
                     else:
                         raise err
 
-            filename = "%s_%s.hdf5" % (tsd, data_obj._name)
+            filename = "%s_%s.h5" % (tsd, data_obj._name)
         else: 
-            filename = "%s.hdf5" % (data_obj._name)
+            filename = "%s.h5" % (data_obj._name)
         
         return os.path.join(path, filename)
 
-class DatasetFile(h5py.File):
+class DatabaseFile(h5py.File):
     """ 
     Create the hdf5 file in the date directory (or time subdirectory) in the base path of "datadir" 
     """
-    def __init__(self, name: str, datadir: str, timesubdir: bool = False, timefilename: bool = False):
+    def __init__(self, name: str, datadir: str, timesubdir: bool = False, timefilename: bool = True):
         """
         Creates an empty data set including the file, for which the currently
         set file name generator is used.
@@ -468,5 +484,186 @@ class DatasetFile(h5py.File):
         
         if not os.path.isdir(self.folder):
             os.makedirs(self.folder)
-        super(DatasetFile, self).__init__(self.filepath, "a")
+        super(DatabaseFile, self).__init__(self.filepath, "a")
         self.flush()
+
+    def update_results(data) -> None:
+        pass
+
+
+
+def initialise_database(exp_name: str, 
+                        sample_name: str,
+                        path: Union[str,Path],
+                        timesubdir: bool = False, 
+                        timefilename: bool = True) -> Path:
+    """ initialise the database in the date folder under the given main path.
+        return the database hdf5 object
+    """
+    name = sample_name + "_" + exp_name
+    database = DatabaseFile(name=name, 
+                        datadir =path,
+                        timesubdir=timesubdir, 
+                        timefilename = timefilename)
+    
+    db_path = Path(database.filename)
+    log.info('Create and initialise the database at {db_path}')
+    return database
+
+class Datasaver():
+    def __init__(self, database: h5py.File) -> None:
+        self.db = database
+    
+    def __enter__(self) -> None:
+        # check if the hdf5 file is open or not 
+        if not self.db.__bool__():
+            self.db = h5py.File(self.db.filename, "a")
+
+    def __exit__(self) -> None:
+        self.db.flush()
+        self.db.close()
+
+    def update_result(self, name: str, data: np.ndarray, group: Optional[str]) ->  None:
+
+        # if group is given, it will create a group in the hdf5 file
+        if group:
+            enter_point = self.db.require_group(group)
+        else: 
+            enter_point = self.db
+
+
+        if name in enter_point.keys():
+            dataset = enter_point[name]
+            if isinstance(dataset, h5py.Dataset):
+                
+                # check the consistency of the udpated data and existing data
+                new_data_shape = data.shape
+                exist_data_shape = dataset.shape
+                
+                # convert the shape of new data
+                if len(new_data_shape) == 1:
+                    shape_list = list(exist_data_shape)
+                    shape_list.insert(0, 1)
+                    new_shape = tuple(shape_list)
+                    data = data.reshape(new_shape)
+                
+                # 2d raw data
+                # the first index is the repetition number
+                if (len(new_data_shape) == 2) and (len(exist_data_shape) == 2):
+                    if new_data_shape[1] != exist_data_shape[1]:
+                        log.warning("The received new data is not consistent with the shape of existing data")
+                        raise ValueError("The received new data have the shape {new_data_shape}, while the existing \
+                            data has the shape of {exist_data_shape}, the second dimension should be the same.")
+                    
+                    # resize the existing data shape and update data
+                    dataset.resize(dataset.shape[0] + data.shape[0], axis=0)
+                    dataset[-data.shape[0] :] = data
+
+                # 3d raw data
+                # the first index is the repetition number
+                elif (len(new_data_shape) == 3) and (len(exist_data_shape) == 3):
+                    if (new_data_shape[1] != exist_data_shape[1]) or (new_data_shape[2] != exist_data_shape[2]):
+                        log.warning("The received new data is not consistent with the shape of existing data")
+                        raise ValueError("The received new data have the shape {new_data_shape}, while the existing \
+                            data has the shape of {exist_data_shape}, the second and third dimension should be the same.")
+                        
+                    # resize the existing data shape and update data
+                    dataset.resize(dataset.shape[0] + data.shape[0], axis=0)
+                    dataset[-data.shape[0] :] = data
+                
+                else: 
+                    raise ValueError("The received new data have the shape {new_data_shape}, which is larger than 3 dimensitons \
+                        or has different shape with existing data")
+            else:
+                log.warning("Data can only be writen in hdf5 dataset")
+                raise TypeError("The write position is not a hdf5 dataset")        
+        
+        # there is no existing data named by the given name
+        else:
+
+            if isinstance(data, list):
+                data = np.array(data)
+            
+            # check the consistency of the udpated data and existing data
+            new_data_shape = data.shape
+            
+            # convert the shape of new data
+            # if the new data is i dimension, it will convert it to 2 dimension 
+            if len(new_data_shape) == 1:
+                newdata_shape_list = list(new_data_shape)
+                newdata_shape_list.insert(0, 1)
+                newdata_shape_2d = tuple(newdata_shape_list)
+                data = data.reshape(newdata_shape_2d)
+                
+                enter_point.create_dataset(
+                    name=name, data=data, maxshape=data.shape, chunks=True)
+            else: 
+                enter_point.create_dataset(
+                    name=name, data=data, maxshape=data.shape, chunks=True)
+        
+        # flush data to the file once update new data
+        self.db.flush()
+        
+    def update_multiple_results(self, data_dict: Dict[str, np.ndarray], group = Optional[str]) ->None:
+        for i, (key, value) in enumerate(data_dict.items()):
+            self.update_result(name=key, data=value, group=group)
+
+    def add_result(self, name: str, data: np.ndarray, overwirte: bool = False, group =Optional[str]) -> None:
+        """
+        add the result once, rather than update the data
+        """
+        
+        # if group is given, it will create a group in the hdf5 file
+        if group:
+            enter_point = self.db.require_group(group)
+        else: 
+            enter_point = self.db
+
+        if name in enter_point.keys():
+            if isinstance(enter_point[name], h5py.Dataset):
+                if overwirte:
+                    del enter_point[name]
+                    enter_point.create_dataset(name= name, data= data)
+                    log.info("Delete the exisitng data and overwrite it")
+                else:
+                    log.warning("There exists a dataset have the same name, if you want to overwrite the data, \
+                        assign \"overwrite = True\"")
+                    raise ValueError("There exists a dataset have the same name, if you want to overwrite the data, \
+                        assign \"overwrite = True\"")
+
+            elif isinstance(enter_point[name], h5py.Group):
+                log.warning("The given name is a hdf5 group, rather hdf5 dataset")
+                raise TypeError("There exist a existing hdf5 group that has the same name.")
+
+        else:
+            enter_point.create_dataset(name= name, data= data)
+
+    def add_multiple_results(self, data_dict: dict, overwrite: bool = False, group= Optional[str]) -> None:
+        """
+        Add multiple results to the database, cannot update the data. 
+        If the result is np.ndarray, the item will be stored as the dataset, 
+        while the result is string or value expect the np.ndarray, the item will be stored as the attribute
+        """
+        if overwrite: 
+            overwrite_level = 0
+        else:
+            overwirte_level = np.inf
+        
+        write_dict_to_hdf5(data_dict, self.db, overwirte_level, group=group)
+
+    def add_metadata(self, metadata_dict: dict, overwrite: bool = False) -> None:
+        if overwrite: 
+            overwrite_level = 0
+        else:
+            overwirte_level = np.inf
+        write_dict_to_hdf5(metadata_dict, self.db, overwirte_level)
+
+    def get_metadata(self, read_dict: dict) -> None:
+        get_dict = read_dict_from_hdf5(read_dict)
+        return  get_dict
+    
+    
+
+
+
+    
