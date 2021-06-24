@@ -15,11 +15,11 @@ datatags: tuple = ("I", "Q", "Y_RAW", "Y_AVG")  # to identify datasets
 ######################        SET MEASUREMENT PARAMETERS        ########################
 
 mdata = {  # metadata dictionary
-    "reps": 10000,  # number of sweep repetitions
+    "reps": 40000,  # number of sweep repetitions
     "wait": 50000,  # delay between reps in ns, an integer multiple of 4 >= 16
     "a_start": -2.0,  # amplitude sweep range is set by a_start, a_stop, and a_step
     "a_stop": 2.0,
-    "a_step": 0.05,
+    "a_step": 0.1,
     "qubit_op": "gaussian",  # qubit pulse name as defined in the config
     "rr_op": "readout",  # readout pulse name
     "rr_op_ampx": 0.2,  # readout pulse amplitude scale factor
@@ -89,15 +89,17 @@ stats = tuple()  # tuple holding vars needed to calculate running std err in sin
 
 # NOTE here, we should save the "mdata" dictionary to the HDF5 file. The idiomatic way of saving metadata in the HDF5 data model is via "Attributes". See https://docs.h5py.org/en/stable/high/attr.html.
 
-#############################        POST-PROCESSING        ############################
+##########################        POST-PROCESSING LOOP        ##########################
 
-while fetcher.count != mdata["reps"]:  # while all results have not been fetched
+while fetcher.count < mdata["reps"]:  # while results from all reps are not fetched
 
     ######################            FETCH PARTIAL RESULTS         ####################
 
     prev_count = fetcher.count  # save previous result count before fetch() updates it
     partial_data = fetcher.fetch()  # return dict with (k, v) = (datatag, partial data)
     curr_count = fetcher.count  # get current number of fetched results
+    if not partial_data:
+        continue  # no new data available, go to beginning of post-processing loop
 
     ######################            SAVE FETCHED RESULTS         #####################
 
@@ -108,7 +110,7 @@ while fetcher.count != mdata["reps"]:  # while all results have not been fetched
     y_raw = np.sqrt(partial_data[datatags[2]])  # latest batch of y_raw
     y_avg = np.sqrt(partial_data[datatags[3]])  # latest batch of y_avg
 
-    # this std_err calc is buggy rn, tryna fix it...
+    # BUG get_std_err() gives consistently higher values for std_err compared to scipy.stats.sem() or numpy.std().
     if stats:  # stats = (y_std_err, running average, running variance * (count-1))
         stats = get_std_err(y_raw, y_avg, curr_count, *stats)
     else:
@@ -120,6 +122,7 @@ while fetcher.count != mdata["reps"]:  # while all results have not been fetched
     ###################            LIVE PLOT AVAILABLE RESULTS         #################
 
     plotter.live_plot(x=xs, y=y_avg[-1], n=curr_count, fit=y_fit, err=stats[0])
+    time.sleep(0.2)  # to prevent over-querying QM and ultra-fast live plotting
 
 ###############################         SAVE PLOT         ##############################
 
