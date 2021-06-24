@@ -12,8 +12,8 @@ class Fetcher:
 
         self.handle: JobResults = handle
         self.tags: tuple[str] = tags
-        for tag in tags:  # wait for at least 1 result to be processed
-            handle.get(tag).wait_for_values(1)
+        for tag in tags:  # wait for at least 2 results to be processed
+            handle.get(tag).wait_for_values(2)
 
 
     def fetch(self) -> dict[str, np.ndarray]:
