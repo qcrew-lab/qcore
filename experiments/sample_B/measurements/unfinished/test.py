@@ -1,40 +1,41 @@
 # Example scrpit to use database
 
+# Important: at C:\Users\qcrew\anaconda3\envs\qcrew\Lib\site-packages\qm\__init__.py
+# add from qm._results import MultipleNamedJobResult, SingleNamedJobResult
+
+# TODO: when this script is open, it seems we can not open the file with h5py.File, but
+#       the context manager has implemented the close() function. Need to check
+#       Temporary solution is 
 from qcrew.experiments.sample_B.imports import *
-
-from datetime import datetime, date, timedelta
-import scipy as sc
-from numpy import datetime_data
-
-# import database
-from qcrew.codebase.database.hdf5_helper import *
 from pathlib import Path
-
-reload(cfg)  # reload configuration and stage before each measurement run
+from matplotlib import pyplot as plt
+from datetime import timedelta
+# reload configuration and stage before each measurement run
+reload(cfg)
 reload(stg)
 
+from qcrew.codebase.datasaver.hdf5_helper import*
+from qcrew.codebase.datasaver.fetch_helper import*
 # ############################
 # # Constant
 # ############################
 rr = stg.rr
 qubit= stg.qubit
-DATABASE_NAME = "sample_B_database"
 DATAPATH_PATH = Path.cwd() / "data"
 EXP_NAME = "rr_spec"
 SAMPLE_NAME = "sample_B"
-
+PROJECT = "squeezed_cat"
 ############################
 #  Parameters
 ############################
-# Loop parameters
-REPS = 1000
+REPS = 2000
 WAIT_TIME = 10000  # in clock cycles
 
 # Measurement pulse
 rr = stg.rr
 F_START = -51e6
 F_STOP = -48e6
-F_STEP = 0.01e6
+F_STEP = 0.02e6
 rr_f_list = np.arange(F_START, F_STOP, F_STEP)
 sweep_points = len(rr_f_list)
 RR_ASCALE = 0.017
@@ -89,58 +90,68 @@ with program() as rr_spec:
         Q_stream.buffer(len(rr_f_list)).save_all("Q_raw")
         I_stream.buffer(len(rr_f_list)).average().save("I_avg")
         Q_stream.buffer(len(rr_f_list)).average().save("Q_avg")
-
+        I_stream.buffer(len(rr_f_list)).average().save_all("I_avg_raw")
+        Q_stream.buffer(len(rr_f_list)).average().save_all("Q_avg_raw")
 
 ############################
 # measurement
 ############################
-    
-    #############################
-    # implement the job
-    job = stg.qm.execute(rr_spec)  # run measurement
-    
-    print(f"{EXP_NAME} in progress...")  # log message
-    handle = job.result_handles
+start_time = time.perf_counter()
+job = stg.qm.execute(rr_spec)
 
+# create the database (hdf5 file)
+db = initialise_database(exp_name=EXP_NAME, 
+                         sample_name=SAMPLE_NAME, 
+                         project_name = PROJECT,
+                         path = DATAPATH_PATH,
+                         timesubdir=False, timefilename = True)
 
-    # individual result handle
-    result_I_raw = handle.get("I_raw")
-    result_Q_raw = handle.get("Q_raw")
-    result_I_avg = handle.get("I_avg")
-    result_Q_avg = handle.get("Q_avg")
-             
-    ############################ 
+with DataSaver(db) as datasaver:
+    ############################
     # create figure
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     hdisplay = display.display("", display_id=True)
     
-    ############################ 
-    # live plotting
-    # live saving
-    with... : (the live part)
-    num_have_got = -1
-    while handle.is_processing() or num_have_got < REPS:
 
 
-        step 1: fetch available data 
+    ############################
+    # live fetch data and save
+    for (num_have_got, update_data_dict) in live_fetch(job=job, reps=REPS):
+        # group: create a group in hdf5 file
+        # it is more clear that we put the raw data and fit data in different group
+        datasaver.update_multiple_results(update_data_dict, group="data")
+        
+        ############################
+        # live plot
+        counter = counter + len(update_data_dict["I_avg_raw"])
+        signal = get_last_average_data(data=update_data_dict,
+                                       i_tag="I_avg_raw", 
+                                       q_tag="Q_avg_raw")
+        
+        ax.clear()
+        ax.plot(rr_f_list, signal)
+        params = plot_fit(rr_f_list, signal, ax, fit_func="lorentzian")
+        ax.set_title("Resonator spectroscopy, average of %d results" % (num_have_got))
+        ax.set_xlabel("Frequency (Hz)")
+        ax.set_ylabel("Signal amplitude")
 
-        step 2: datasaver.add_results(latest block of results )
-
-        step 3: plot and update figure (same as what we are doing right now)
+        # update figure
+        hdisplay.update(fig)
     
-
+    ############################
+    # fetch final average data
+    final_data_dict = final_fetch(job=job)
+    datasaver.add_multiple_results(final_data_dict, group = "data")
     
-    # flush to hdf5 file
-    datasaver.flush_data_to_database()
-    
-     ###############################
-    # store the metadata
-    dataset = datasaver.dataset
-    # store the created metadata dict
-    dataset.add_metadata("metadata", metadata=metadata)
+    #################################          
+    # save figure
+    plt.show()
+    save_figure(db)
 
-
+############################
+# finish measurement
+############################
 
 print(job.execution_report())
 elapsed_time = time.perf_counter() - start_time
