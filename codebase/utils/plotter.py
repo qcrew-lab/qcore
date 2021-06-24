@@ -1,7 +1,5 @@
 """ Qcrew plotter v1.0 """
 
-import time
-
 import matplotlib.pyplot as plt
 from IPython import display
 
@@ -37,7 +35,6 @@ class Plotter:
 
         display.display(plt.gcf())  # plot latest batch
         display.clear_output(wait=True)  # clear plot when new plot is available
-        time.sleep(self.live_plot_refresh_delay)  # to prevent ultra-fast live plotting
 
     def plot_errorbar(self, x, y, err, label):
         plt.errorbar(
