@@ -19,7 +19,7 @@ class Datasaver:
         self.folderpath.mkdir(parents=True, exist_ok=True)  # make folder if none exists
 
         filename = f"{datetime.now().strftime('%H-%M-%S')}_{filename_suffix}"
-        self.filepath: Path = self.folderpath / filename / self.file_extension
+        self.filepath: Path = self.folderpath / (filename + self.file_extension)
 
         self.file = h5py.File(str(self.filepath), "a")  # open file in append mode
 
