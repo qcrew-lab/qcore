@@ -6,7 +6,7 @@ from pathlib import Path
 import h5py
 
 
-class Datasaver:
+class DummyDatasaver:
     """ """
 
     datapath: Path = Path.cwd() / "data"

@@ -78,7 +78,7 @@ job = stg.qm.execute(power_rabi)
 
 #############################        INVOKE HELPERS        #############################
 
-datasaver = Datasaver(sample_name=STAGE_NAME, filename_suffix=filename_suffix)
+datasaver = DummyDatasaver(sample_name=STAGE_NAME, filename_suffix=filename_suffix)
 # NOTE I have written a simple __init__ method for the Datasaver class which generates folder and file paths and opens a new HDF5 file associated with this measurement run. You can add other methods e.g. save_metadata() and save_data() to this class.
 
 fetcher = Fetcher(handle=job.result_handles, tags=datatags)
@@ -108,6 +108,7 @@ while fetcher.count != mdata["reps"]:  # while all results have not been fetched
     y_raw = np.sqrt(partial_data[datatags[2]])  # latest batch of y_raw
     y_avg = np.sqrt(partial_data[datatags[3]])  # latest batch of y_avg
 
+    # this std_err calc is buggy rn, tryna fix it...
     if stats:  # stats = (y_std_err, running average, running variance * (count-1))
         stats = get_std_err(y_raw, y_avg, curr_count, *stats)
     else:
