@@ -13,6 +13,11 @@ from qcrew.codebase.analysis.plot import plot_fit
 from qcrew.codebase.analysis.qm_get_results import update_results
 from qcrew.codebase.analysis.plot import FakeLivePlotter
 from qcrew.codebase.analysis import fit
+from qcrew.codebase.utils.datasaver import Datasaver
+from qcrew.codebase.utils.fetcher import Fetcher
+from qcrew.codebase.utils.plotter import Plotter
+from qcrew.codebase.utils.statistician import get_std_err
+
 
 from datetime import datetime, date, timedelta
 from pathlib import Path
