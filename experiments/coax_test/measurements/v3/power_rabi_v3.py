@@ -16,11 +16,11 @@ qubit = stg.qubit  # reference to the qubit object
 ######################        SET MEASUREMENT PARAMETERS        ########################
 
 mdata = {  # metadata dict, set measurement parameters here
-    "reps": 1000,  # number of sweep repetitions
+    "reps": 10000,  # number of sweep repetitions
     "wait_time": 50000,  # delay between reps in ns, an integer multiple of 4 >= 16
     "a_start": -2.0,  # amplitude sweep range is set by a_start, a_stop, and a_step
     "a_stop": 2.0,
-    "a_step": 0.4,
+    "a_step": 0.05,
     "qubit_op": "gaussian",  # qubit pulse name as defined in the config
     "r_ampx": 0.2,  # readout pulse amplitude scale factor
     "rr_op": "readout",  # readout pulse name
@@ -40,6 +40,7 @@ with program() as power_rabi:
 
     n = declare(int)  # averaging loop variable
     a = declare(fixed)  # amplitude scale factor sweep variable
+    a_st = declare_stream()
 
     I, Q = declare(fixed), declare(fixed)  # result variables
     I_st, Q_st = declare_stream(), declare_stream()  # to save result variables
@@ -63,6 +64,7 @@ with program() as power_rabi:
             wait(int(mdata["wait_time"] // 4), qubit.name)
             save(I, I_st)
             save(Q, Q_st)
+            save(a, a_st)
 
     #####################        RESULT STREAM PROCESSING        #######################
 
@@ -84,6 +86,8 @@ with program() as power_rabi:
 
         # compute signal^2 from running averages of I and Q values for live plotting
         (I_avg_st * I_avg_st + Q_avg_st * Q_avg_st).save_all("signal_sq_avg")
+
+        a_st.buffer(mdata["sweep_len"]).save("a")
 
 #############################        RUN MEASUREMENT        ############################
 

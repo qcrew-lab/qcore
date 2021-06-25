@@ -6,7 +6,7 @@ start_time = time.perf_counter()  # to get measurement execution time
 
 ##############        SPECIFY VARIABLES FOR SAVING MEASUREMENT DATA       ##############
 
-meas_name = "power_rabi"  # appended to saved datafile name
+meas_name = "power_rabi"  # appended to saved datafile name and used as plot title
 filename_suffix = meas_name + ""  # replace "" to customise filename
 
 datatags: tuple = ("I", "Q", "Y_RAW", "Y_AVG")  # to identify datasets
