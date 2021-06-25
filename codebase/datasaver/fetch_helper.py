@@ -1,4 +1,6 @@
 from qm.QmJob import QmJob
+
+
 from qm import MultipleNamedJobResult, SingleNamedJobResult
 
 from pathlib import Path
@@ -15,7 +17,6 @@ def live_fetch(job: QmJob, reps: int, interval: int=100) -> None:
 
     while job_results.is_processing() or num_have_got < reps:
 
-        # print(f"fetch_iteration {num_have_got}")
         update_result_dict = {}
         for name, handle in job_results:
             if isinstance(handle, MultipleNamedJobResult):
