@@ -54,7 +54,7 @@ class Plotter:
         )
 
     def plot_scatter(self, x, y):
-        plt.scatter(x, y, s=4, c="black", marker="o", fillstyle="none")
+        plt.scatter(x, y, s=4, c="black", marker="o")
 
     def plot_line(self, x, y, label):
         plt.plot(x, y, color="m", lw=2, label=label)
