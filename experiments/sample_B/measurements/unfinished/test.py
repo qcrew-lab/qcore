@@ -21,7 +21,7 @@ else:
 
 ##############        INFO      ##############
 PROJECT = "squeezed_cat"
-EXP_NAME = "power_rabi" 
+EXP_NAME = "power_rabi"
 SAMPLE_NAME =  "sample_B"
 DATAPBASE_PATH = Path.cwd() / "data"
 
