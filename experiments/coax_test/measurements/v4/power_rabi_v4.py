@@ -1,25 +1,26 @@
-""" Power Rabi measurement script v4, with notes on data saving for Yifan"""
+""" Power Rabi measurement script v4 """
+#############################           IMPORTS           ##############################
+
 from qcrew.experiments.coax_test.imports import *
 
-reload(cfg), reload(stg)  # reload before each measurement run
-start_time = time.perf_counter()  # to get measurement execution time
+reload(cfg)
+reload(stg)  # reload stage and configuration before each measurement run
 
-##############        SPECIFY VARIABLES FOR SAVING MEASUREMENT DATA       ##############
+##########################        DATA SAVING VARIABLES       ##########################
 
-meas_name = "power_rabi"  # appended to saved datafile name and used as plot title
-filename_suffix = meas_name + ""  # replace "" to customise filename
+SAMPLE_NAME = "coax_a"
+EXP_NAME = "power_rabi"
+PROJECT_FOLDER_NAME = "coax_test"
+DATAPATH = Path.cwd() / "data"
 
-datatags: tuple = ("I", "Q", "Y_RAW", "Y_AVG")  # to identify datasets
-# NOTE these datatags are meant to standardize the names of the datasets for stream processing, fetching, and saving. Please use them to create group / dataset keys in the hdf5 file.
+#########################        MEASUREMENT PARAMETERS        #########################
 
-######################        SET MEASUREMENT PARAMETERS        ########################
-
-mdata = {  # metadata dictionary
-    "reps": 40000,  # number of sweep repetitions
+metadata = {
+    "reps": 10000,  # number of sweep repetitions
     "wait": 50000,  # delay between reps in ns, an integer multiple of 4 >= 16
-    "a_start": -2.0,  # amplitude sweep range is set by a_start, a_stop, and a_step
-    "a_stop": 2.0,
-    "a_step": 0.1,
+    "start": -2.0,  # amplitude sweep range is set by start, stop, and step
+    "stop": 2.0,
+    "step": 0.02,
     "qubit_op": "gaussian",  # qubit pulse name as defined in the config
     "rr_op": "readout",  # readout pulse name
     "rr_op_ampx": 0.2,  # readout pulse amplitude scale factor
@@ -30,47 +31,57 @@ mdata = {  # metadata dictionary
     "qubit_int_freq": stg.qubit.int_freq,  # frequency played by OPX to qubit
 }
 
-xs = np.arange(mdata["a_start"], mdata["a_stop"], mdata["a_step"])  # indep var list
-mdata["sweep_len"] = len(xs)  # add sweep length to metadata
+metadata["sweep_length"] = len(  # add sweep length to metadata
+    np.arange(metadata["start"], metadata["stop"], metadata["step"])
+)
 
-##########################        DEFINE QUA PROGRAM        ############################
+########################        QUA PROGRAM DEFINITION        ##########################
 
 with program() as power_rabi:
 
     #####################        QUA VARIABLE DECLARATIONS        ######################
 
     n = declare(int)  # averaging loop variable
-    a = declare(fixed)  # amplitude scale factor sweep variable
-
-    I, Q = declare(fixed), declare(fixed)  # result variables
-    I_st, Q_st = declare_stream(), declare_stream()  # to save result variables
+    x = declare(fixed)  # sweep variable "x"
+    x_stream = declare_stream()  # to save "x"
+    I = declare(fixed)  # result variable "I"
+    I_stream = declare_stream()  # to save "I"
+    Q = declare(fixed)  # result variable "Q"
+    Q_stream = declare_stream()  # to save "Q"
+    # unpack start, stop, step from the metadata dictionary for convenience
+    x_start, x_stop, x_step = metadata["start"], metadata["stop"], metadata["step"]
 
     #######################        MEASUREMENT SEQUENCE        #########################
 
-    with for_(n, 0, n < mdata["reps"], n + 1):  # outer averaging loop, inner ampx sweep
-        with for_(a, mdata["a_start"], a < mdata["a_stop"], a + mdata["a_step"]):
-            play(mdata["qubit_op"] * amp(a), stg.qubit.name)
+    with for_(n, 0, n < metadata["reps"], n + 1):
+        with for_(x, x_start, x < x_stop - x_step / 2, x + x_step):
+            play(metadata["qubit_op"] * amp(x), stg.qubit.name)
             align(stg.qubit.name, stg.rr.name)
             measure(
-                mdata["rr_op"] * amp(mdata["rr_op_ampx"]),
+                metadata["rr_op"] * amp(metadata["rr_op_ampx"]),
                 stg.rr.name,
                 None,
                 demod.full("integW1", I),
                 demod.full("integW2", Q),
             )
-            wait(int(mdata["wait"] // 4), stg.qubit.name)
-            save(I, I_st)
-            save(Q, Q_st)
+            wait(int(metadata["wait"] // 4), stg.qubit.name)
+            save(x, x_stream)
+            save(I, I_stream)
+            save(Q, Q_stream)
 
     #####################        RESULT STREAM PROCESSING        #######################
 
     with stream_processing():
-        I_raw, Q_raw = I_st.buffer(mdata["sweep_len"]), Q_st.buffer(mdata["sweep_len"])
-        I_raw.save_all(datatags[0])  # save raw I values
-        Q_raw.save_all(datatags[1])  # save raw Q values
-        (I_raw * I_raw + Q_raw * Q_raw).save_all(datatags[2])  # save y^2 to get std err
-        I_avg, Q_avg = I_raw.average(), Q_raw.average()  # get running averages
-        (I_avg * I_avg + Q_avg * Q_avg).save_all(datatags[3])  # save avg y^2
+        I_raw = I_stream.buffer(metadata["sweep_length"])
+        Q_raw = Q_stream.buffer(metadata["sweep_length"])  # to reshape result streams
+        I_avg = I_raw.average()
+        Q_avg = Q_raw.average()  # to get running averages
+
+        I_raw.save_all("I")
+        Q_raw.save_all("Q")  # to save all raw I and Q data
+        (I_raw * I_raw + Q_raw * Q_raw).save_all("Y_RAW")  # to get std err
+        (I_avg * I_avg + Q_avg * Q_avg).save_all("Y_AVG")  # to live plot
+        x_stream.buffer(metadata["sweep_length"]).save("X")  # to save sweep variable
 
 #############################        RUN MEASUREMENT        ############################
 
@@ -78,62 +89,79 @@ job = stg.qm.execute(power_rabi)
 
 #############################        INVOKE HELPERS        #############################
 
-datasaver = DummyDatasaver(sample_name=STAGE_NAME, filename_suffix=filename_suffix)
-# NOTE I have written a simple __init__ method for the Datasaver class which generates folder and file paths and opens a new HDF5 file associated with this measurement run. You can add other methods e.g. save_metadata() and save_data() to this class.
+fetcher = Fetcher(handle=job.result_handles, num_results=metadata["reps"])
+plotter = Plotter(title=EXP_NAME, xlabel="Amplitude scale factor")
+stats = tuple()  # to calculate std error in one pass
+db = initialise_database(
+    exp_name=EXP_NAME,
+    sample_name=SAMPLE_NAME,
+    project_name=PROJECT_FOLDER_NAME,
+    path=DATAPATH,
+    timesubdir=False,
+    timefilename=True,
+)
 
-fetcher = Fetcher(handle=job.result_handles, tags=datatags)
-plotter = Plotter(title=meas_name, xlabel="Amplitude scale factor")
-stats = tuple()  # tuple holding vars needed to calculate running std err in single pass
+#######################        LIVE POST-PROCESSING LOOP        ########################
 
-######################        SAVE MEASUREMENT RUN METADATA       ######################
 
-# NOTE here, we should save the "mdata" dictionary to the HDF5 file. The idiomatic way of saving metadata in the HDF5 data model is via "Attributes". See https://docs.h5py.org/en/stable/high/attr.html.
+with DataSaver(db) as datasaver:
 
-##########################        POST-PROCESSING LOOP        ##########################
+    ####################        SAVE MEASUREMENT RUN METADATA       ####################
 
-while fetcher.count < mdata["reps"]:  # while results from all reps are not fetched
+    datasaver.add_metadata(metadata)
 
-    ######################            FETCH PARTIAL RESULTS         ####################
+    while fetcher.is_fetching:  # while the fetcher is not done fetching all results
 
-    prev_count = fetcher.count  # save previous result count before fetch() updates it
-    partial_data = fetcher.fetch()  # return dict with (k, v) = (datatag, partial data)
-    curr_count = fetcher.count  # get current number of fetched results
-    if not partial_data:
-        continue  # no new data available, go to beginning of post-processing loop
+        ####################            FETCH PARTIAL RESULTS         ##################
 
-    ######################            SAVE FETCHED RESULTS         #####################
+        # NOTE for Yifan about fetcher.fetch() method behaviour
+        # fetcher.fetch() returns dict "partial_results" with key = tag, value = data
+        # "partial_results" has result data for all tags defined in stream processing
+        # if tag belongs to single result, data is got by calling:
+        # handle.get(tag).fetch_all(flat_struct = True)
+        # else if tag belongs to multiple result, data is got by calling:
+        # handle.get(tag).fetch(slice(last_count, count), flat_struct=True)
+        # where last_count and count are maintained by the Fetcher
+        # you can get current number of results fetched by calling fetcher.count
+        partial_results = fetcher.fetch()
+        num_fetched_results = fetcher.count
+        if not partial_results:  # empty dict return means no new results are available
+            continue  # go to beginning of live post-processing loop
 
-    # NOTE here, we should "live" save the latest batch of available results that "fetcher" has fetched. Fetch() returns "partial_data", where key = "datatag" and value = numpy array holding partial results from batch number "prev_count" to "curr_count". You can use "prev_count" and "curr_count" together with "mdata["sweep_len"]" and "mdata["reps"]" to track partial result array shapes. Note that the Datasaver class I've written has already opened the HDF5 file in its __init__ method, so there's no need for a with() statement, as long as the Datasaver closes the file at the end of this script. Please feel free to ask me any questions about this step, because its the most complex and critical step wrt data saving.
+        ####################            LIVE SAVE RESULTS         ######################
 
-    ####################            PROCESS AVAILABLE RESULTS         ##################
+        # to only live save raw "I" and "Q" data, we extract them from "partial_results"
+        live_save_dict = {"I": partial_results["I"], "Q": partial_results["Q"]}
+        datasaver.update_multiple_results(live_save_dict, group="data")
 
-    y_raw = np.sqrt(partial_data[datatags[2]])  # latest batch of y_raw
-    y_avg = np.sqrt(partial_data[datatags[3]])  # latest batch of y_avg
+        #################            PROCESS AVAILABLE RESULTS         #################
 
-    # BUG get_std_err() gives consistently higher values for std_err compared to scipy.stats.sem() or numpy.std().
-    if stats:  # stats = (y_std_err, running average, running variance * (count-1))
-        stats = get_std_err(y_raw, y_avg, curr_count, *stats)
-    else:
-        stats = get_std_err(y_raw, y_avg, curr_count)
+        ys_raw = np.sqrt(partial_results["Y_RAW"])  # latest batch of raw ys
+        ys_avg = np.sqrt(partial_results["Y_AVG"])  # latest batch of avg ys
+        xs = partial_results["X"]
 
-    fit_params = fit.do_fit(mdata["fit_fn"], xs, y_avg[-1])  # get fit parameters
-    y_fit = fit.eval_fit(mdata["fit_fn"], fit_params, xs)  # get fit values
+        if stats:  # stats = (y_std_err, running average, running variance * (count-1))
+            stats = get_std_err(ys_raw, ys_avg, num_fetched_results, *stats)
+        else:
+            stats = get_std_err(ys_raw, ys_avg, num_fetched_results)
 
-    ###################            LIVE PLOT AVAILABLE RESULTS         #################
+        fit_params = fit.do_fit(metadata["fit_fn"], xs, ys_avg[-1])  # get fit params
+        ys_fit = fit.eval_fit(metadata["fit_fn"], fit_params, xs)  # get fit values
 
-    plotter.live_plot(x=xs, y=y_avg[-1], n=curr_count, fit=y_fit, err=stats[0])
-    time.sleep(0.2)  # to prevent over-querying QM and ultra-fast live plotting
+        #################            LIVE PLOT AVAILABLE RESULTS         ###############
 
-###############################         SAVE PLOT         ##############################
+        plotter.live_plot(
+            x=xs, y=ys_avg[-1], n=num_fetched_results, fit=ys_fit, err=stats[0]
+        )
+        time.sleep(0.5)  # prevent over-fetching, over-saving, ulta-fast live plotting
 
-# NOTE (OPTIONAL) here, we can save the final plot. If we want to do that, I suggest we save it in the same HDF5 file (HDF5 can save images too), so that each measurement run is associated with a single saved file.
+    #######################         SAVE REMAINING DATA         ########################
 
-#########################         DATASAVER WIND DOWN         ##########################
-
-# NOTE use this block to do any final housekeeping for the Datasaver, such as flush, file close e.t.c.
+    # to save final average and sweep variables, we extract them from "partial_results"
+    final_save_dict = {"Y_AVG": ys_avg[-1], "X": xs}
+    datasaver.add_multiple_results(final_save_dict, group = "data")
+    # NOTE (OPTIONAL) here, we can also save the final plot.
 
 ###############################          fin           #################################
 
-elapsed_time = time.perf_counter() - start_time
-print(f"Measurement done! Execution time: {str(timedelta(seconds=elapsed_time))}")
 print(job.execution_report())

@@ -16,7 +16,7 @@ qubit = stg.qubit  # reference to the qubit object
 ######################        SET MEASUREMENT PARAMETERS        ########################
 
 mdata = {  # metadata dict, set measurement parameters here
-    "reps": 10000,  # number of sweep repetitions
+    "reps": 100,  # number of sweep repetitions
     "wait_time": 50000,  # delay between reps in ns, an integer multiple of 4 >= 16
     "a_start": -2.0,  # amplitude sweep range is set by a_start, a_stop, and a_step
     "a_stop": 2.0,
