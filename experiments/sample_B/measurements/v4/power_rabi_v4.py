@@ -8,15 +8,15 @@ reload(stg)  # reload stage and configuration before each measurement run
 
 ##########################        DATA SAVING VARIABLES       ##########################
 
-SAMPLE_NAME = "sample_B"
+SAMPLE_NAME = "coax_a"
 EXP_NAME = "power_rabi"
-PROJECT_FOLDER_NAME = "squeezed_cat"
+PROJECT_FOLDER_NAME = "coax_test"
 DATAPATH = Path.cwd() / "data"
 
 #########################        MEASUREMENT PARAMETERS        #########################
 
 metadata = {
-    "reps": 10000,  # number of sweep repetitions
+    "reps": 20000,  # number of sweep repetitions
     "wait": 50000,  # delay between reps in ns, an integer multiple of 4 >= 16
     "start": -2.0,  # amplitude sweep range is set by start, stop, and step
     "stop": 2.0,
@@ -31,9 +31,8 @@ metadata = {
     "qubit_int_freq": stg.qubit.int_freq,  # frequency played by OPX to qubit
 }
 
-metadata["sweep_length"] = len(  # add sweep length to metadata
-    np.arange(metadata["start"], metadata["stop"], metadata["step"])
-)
+x_start, x_stop, x_step = metadata["start"], metadata["stop"], metadata["step"]
+metadata["sweep_length"] = len(np.arange(x_start, x_stop, x_step))
 
 ########################        QUA PROGRAM DEFINITION        ##########################
 
@@ -48,8 +47,6 @@ with program() as power_rabi:
     I_stream = declare_stream()  # to save "I"
     Q = declare(fixed)  # result variable "Q"
     Q_stream = declare_stream()  # to save "Q"
-    # unpack start, stop, step from the metadata dictionary for convenience
-    x_start, x_stop, x_step = metadata["start"], metadata["stop"], metadata["step"]
 
     #######################        MEASUREMENT SEQUENCE        #########################
 
@@ -114,17 +111,9 @@ with DataSaver(db) as datasaver:
 
         ####################            FETCH PARTIAL RESULTS         ##################
 
-        # NOTE for Yifan about fetcher.fetch() method behaviour
-        # fetcher.fetch() returns dict "partial_results" with key = tag, value = data
-        # "partial_results" has result data for all tags defined in stream processing
-        # if tag belongs to single result, data is got by calling:
-        # handle.get(tag).fetch_all(flat_struct = True)
-        # else if tag belongs to multiple result, data is got by calling:
-        # handle.get(tag).fetch(slice(last_count, count), flat_struct=True)
-        # where last_count and count are maintained by the Fetcher
-        # you can get current number of results fetched by calling fetcher.count
+        # fetch() returns dict "partial_results" with key = tag, value = partial data
         partial_results = fetcher.fetch()
-        num_fetched_results = fetcher.count
+        num_fetched_results = fetcher.count  # get number of results fetched so far
         if not partial_results:  # empty dict return means no new results are available
             continue  # go to beginning of live post-processing loop
 
@@ -145,21 +134,18 @@ with DataSaver(db) as datasaver:
         else:
             stats = get_std_err(ys_raw, ys_avg, num_fetched_results)
 
-        fit_params = fit.do_fit(metadata["fit_fn"], xs, ys_avg[-1])  # get fit params
-        ys_fit = fit.eval_fit(metadata["fit_fn"], fit_params, xs)  # get fit values
-
         #################            LIVE PLOT AVAILABLE RESULTS         ###############
 
         plotter.live_plot(
-            x=xs, y=ys_avg[-1], n=num_fetched_results, fit=ys_fit, err=stats[0]
+            xs, ys_avg[-1], num_fetched_results, fit_fn=metadata["fit_fn"], err=stats[0]
         )
-        time.sleep(0.5)  # prevent over-fetching, over-saving, ulta-fast live plotting
+        time.sleep(1)  # prevent over-fetching, over-saving, ulta-fast live plotting
 
     #######################         SAVE REMAINING DATA         ########################
 
     # to save final average and sweep variables, we extract them from "partial_results"
     final_save_dict = {"Y_AVG": ys_avg[-1], "X": xs}
-    datasaver.add_multiple_results(final_save_dict, group = "data")
+    datasaver.add_multiple_results(final_save_dict, group="data")
     # NOTE (OPTIONAL) here, we can also save the final plot.
 
 ###############################          fin           #################################
