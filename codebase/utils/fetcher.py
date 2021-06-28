@@ -46,6 +46,8 @@ class Fetcher:
         if self.count == self.last_count:  # no new results to fetch
             if not self.handle.is_processing() and self.count >= self.total_count:
                 self.is_fetching = False  # fetching is complete
+                if self.count > self.total_count:
+                    print(f"WARNING: EXTRA RESULTS ({self.count}, {self.total_count})")
             return dict()  # return empty dict because no new results to fetch
 
         partial_results = dict()  # populate and return partial results dictionary
