@@ -1,27 +1,30 @@
-import matplotlib.pyplot as plt
-import numpy as np
-from IPython import display
-import time
-import scipy
-from qm.qua import *
-import h5py
-
+# imports needed for v4 scripts
 from importlib import reload
 from qcrew.experiments.coax_test.imports import configuration as cfg
 from qcrew.experiments.coax_test.imports import stage as stg
+from pathlib import Path
+import numpy as np
+from qm.qua import *
+from qcrew.codebase.utils.fetcher import Fetcher
+from qcrew.codebase.utils.plotter import Plotter
+from qcrew.codebase.utils.statistician import get_std_err
+from qcrew.codebase.datasaver.hdf5_helper import initialise_database, DataSaver
+import time
+
+
+# imports not needed for v4 scripts
+
+import matplotlib.pyplot as plt
+from IPython import display
+import scipy
+import h5py
 from qcrew.codebase.analysis.plot import plot_fit
 from qcrew.codebase.analysis.qm_get_results import update_results
 from qcrew.codebase.analysis.plot import FakeLivePlotter
 from qcrew.codebase.analysis import fit
 from qcrew.codebase.utils.dummy_datasaver import DummyDatasaver
-from qcrew.codebase.utils.fetcher import Fetcher
-from qcrew.codebase.utils.plotter import Plotter
-from qcrew.codebase.utils.statistician import get_std_err
 from qcrew.codebase.utils.fixed_point_library import Fixed, Int
-from qcrew.codebase.datasaver.hdf5_helper import initialise_database, DataSaver
-
 from datetime import datetime, date, timedelta
-from pathlib import Path
 
 STAGE_NAME = "coax_test"  # this is used to save experimental data to the correct folder
 DAILY_SUBFOLDER = str(date.today())
