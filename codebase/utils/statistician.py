@@ -15,3 +15,26 @@ def get_std_err(xs, ms, n, std_err=None, m=None, s=None):
     new_m, new_s = ms[-1], np.sum(new_ss, axis=0)
     std_err = np.sqrt(new_s / (n * (n - 1)))
     return std_err, new_m, new_s
+
+"""# test by generating random data
+import scipy.stats as sps
+import random
+
+rows, cols = 20000, 10
+xs_ = np.random.normal(5e-7, 2.5e-7, size=(rows, cols))
+ms_ = np.zeros((rows, cols))
+for i in range(rows):
+    ms_[i] = np.average(xs_[:i+1], axis=0)
+
+print("get_std_err()...")
+stats = tuple()
+start = 4
+stats = get_std_err(xs_[:start], ms_[:start], start)
+for i in range(start + 1, rows, random.randint(2, 100)):
+    stats = get_std_err(xs_[start:i], ms_[start:i], i+1, *stats)
+    start = i
+
+print(f"stderr: {stats[0]}")
+print()
+print("scipy...")
+print(sps.sem(xs_, axis=0))"""

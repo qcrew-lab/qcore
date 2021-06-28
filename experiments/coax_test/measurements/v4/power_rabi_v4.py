@@ -20,7 +20,7 @@ metadata = {
     "wait": 50000,  # delay between reps in ns, an integer multiple of 4 >= 16
     "start": -2.0,  # amplitude sweep range is set by start, stop, and step
     "stop": 2.0,
-    "step": 0.02,
+    "step": 0.2,
     "qubit_op": "gaussian",  # qubit pulse name as defined in the config
     "rr_op": "readout",  # readout pulse name
     "rr_op_ampx": 0.2,  # readout pulse amplitude scale factor
@@ -76,8 +76,12 @@ with program() as power_rabi:
 
         I_raw.save_all("I")
         Q_raw.save_all("Q")  # to save all raw I and Q data
-        (I_raw * I_raw + Q_raw * Q_raw).save_all("Y_RAW")  # to get std err
-        (I_avg * I_avg + Q_avg * Q_avg).save_all("Y_AVG")  # to live plot
+
+        # we need these two streams to calculate std err in a single pass
+        (I_raw * I_raw + Q_raw * Q_raw).save_all("Y_SQ_RAW")
+        (I_raw * I_raw + Q_raw * Q_raw).average().save_all("Y_SQ_RAW_AVG")
+
+        (I_avg * I_avg + Q_avg * Q_avg).save("Y_AVG")  # to live plot latest average
         x_stream.buffer(metadata["sweep_length"]).save("X")  # to save sweep variable
 
 #############################        RUN MEASUREMENT        ############################
@@ -88,7 +92,7 @@ job = stg.qm.execute(power_rabi)
 
 fetcher = Fetcher(handle=job.result_handles, num_results=metadata["reps"])
 plotter = Plotter(title=EXP_NAME, xlabel="Amplitude scale factor")
-stats = tuple()  # to calculate std error in one pass
+stats = tuple()  # to hold variables needed to calculate std error in one pass
 db = initialise_database(
     exp_name=EXP_NAME,
     sample_name=SAMPLE_NAME,
@@ -111,11 +115,10 @@ with DataSaver(db) as datasaver:
 
         ####################            FETCH PARTIAL RESULTS         ##################
 
-        # fetch() returns dict "partial_results" with key = tag, value = partial data
-        partial_results = fetcher.fetch()
-        num_fetched_results = fetcher.count  # get number of results fetched so far
+        partial_results = fetcher.fetch()  # key = tag, value = partial data
+        num_results = fetcher.count  # get number of results fetched so far
         if not partial_results:  # empty dict return means no new results are available
-            continue  # go to beginning of live post-processing loop
+            continue
 
         ####################            LIVE SAVE RESULTS         ######################
 
@@ -123,28 +126,26 @@ with DataSaver(db) as datasaver:
         live_save_dict = {"I": partial_results["I"], "Q": partial_results["Q"]}
         datasaver.update_multiple_results(live_save_dict, group="data")
 
-        #################            PROCESS AVAILABLE RESULTS         #################
+        ##########            CALCULATE RUNNING MEAN STANDARD ERROR         ############
 
-        ys_raw = np.sqrt(partial_results["Y_RAW"])  # latest batch of raw ys
-        ys_avg = np.sqrt(partial_results["Y_AVG"])  # latest batch of avg ys
-        xs = partial_results["X"]
-
+        ys_raw = np.sqrt(partial_results["Y_SQ_RAW"])
+        ys_raw_avg = np.sqrt(partial_results["Y_SQ_RAW_AVG"])
         if stats:  # stats = (y_std_err, running average, running variance * (count-1))
-            stats = get_std_err(ys_raw, ys_avg, num_fetched_results, *stats)
+            stats = get_std_err(ys_raw, ys_raw_avg, num_results, *stats)
         else:
-            stats = get_std_err(ys_raw, ys_avg, num_fetched_results)
+            stats = get_std_err(ys_raw, ys_raw_avg, num_results)
 
         #################            LIVE PLOT AVAILABLE RESULTS         ###############
 
-        plotter.live_plot(
-            xs, ys_avg[-1], num_fetched_results, fit_fn=metadata["fit_fn"], err=stats[0]
-        )
+        ys = np.sqrt(partial_results["Y_AVG"])  # latest batch of average signal
+        xs = partial_results["X"]
+        plotter.live_plot(xs, ys, num_results, fit_fn=metadata["fit_fn"], err=stats[0])
         time.sleep(1)  # prevent over-fetching, over-saving, ulta-fast live plotting
 
     #######################         SAVE REMAINING DATA         ########################
 
     # to save final average and sweep variables, we extract them from "partial_results"
-    final_save_dict = {"Y_AVG": ys_avg[-1], "X": xs}
+    final_save_dict = {"Y_AVG": ys, "X": xs}
     datasaver.add_multiple_results(final_save_dict, group="data")
     # NOTE (OPTIONAL) here, we can also save the final plot.
 
