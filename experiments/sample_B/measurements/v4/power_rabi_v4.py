@@ -1,7 +1,7 @@
 """ Power Rabi measurement script v4 """
 #############################           IMPORTS           ##############################
 
-from qcrew.experiments.coax_test.imports import *
+from qcrew.experiments.sample_B.imports import *
 
 reload(cfg)
 reload(stg)  # reload stage and configuration before each measurement run

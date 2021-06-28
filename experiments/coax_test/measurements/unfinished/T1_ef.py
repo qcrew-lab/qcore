@@ -13,7 +13,7 @@ MEAS_NAME = "T1_ef"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 400000
+reps = 800000
 wait_time = 12500  # in clock cycles
 
 # Qubit pulse
@@ -30,7 +30,7 @@ qubit_op = "gaussian"  # qubit operation as defined in config
 
 # Wait time until measurement in clock cycles
 t_start = 4  # must be integer >= 4, this is in multiples of 4 ns.
-t_stop = 5000
+t_stop = 2000
 t_step = 48
 t_list = np.arange(t_start, t_stop, t_step)
 
@@ -67,12 +67,12 @@ with program() as power_rabi:
             update_frequency(qubit.name, qubit_ef_freq)
             play(qubit_op * amp(qubit_ascale), qubit.name)
 
+            # wait
+            wait(t, qubit.name)
+
             # e to g pulse
             update_frequency(qubit.name, qubit_prep_freq)
             play(qubit_prep_op * amp(qubit_prep_a), qubit.name)
-
-            # wait
-            wait(t, qubit.name)
 
             align(qubit.name, rr.name)
             measure(
@@ -105,7 +105,7 @@ ax = fig.add_subplot(1, 1, 1)
 hdisplay = display.display("", display_id=True)
 raw_data = {}
 result_handles = job.result_handles
-N = 500  # Maximum size of data batch for each refresh
+N = 1000  # Maximum size of data batch for each refresh
 remaining_data = reps
 while remaining_data != 0:
     # clear data from plot
@@ -158,4 +158,3 @@ plt.savefig(imgpath)
 ########################################################################################
 ########################################################################################
 ########################################################################################
-
