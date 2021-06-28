@@ -1,42 +1,42 @@
 # import all objects defined in the __init__.py file in the 'imports' folder
-from qcrew.experiments.coax_test.imports import *
+from qcrew.experiments.sample_B.imports import *
 
 reload(cfg), reload(stg)  # reloads modules before executing the code below
 
 # NOTE: make changes to lo, if, tof, mixer offsets in 'configuration.py'
 # NOTE: make changes to constant pulse amp and pulse duration in the qua script below
 
-MEAS_NAME = "qubit_spec_ef"  # used for naming the saved data file
+MEAS_NAME = "qubit_spec_live"  # used for naming the saved data file
+from qcrew.codebase.instruments import MetaInstrument, QuantumElement, Sa124
 
 ########################################################################################
 ########################           MEASUREMENT SEQUENCE         ########################
 ########################################################################################
 
 # Loop parameters
-reps = 160000
-wait_time = 12500  # in clock cycles
+reps = 15000
+wait_time = 80000  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-# g to e Preparation pulse
-qubit_prep_freq = 190e6
-qubit_prep_a = 1.00
-qubit_prep_op = "gaussian"
-# e to f probe pulse
-f_start = -45.5e6
-f_stop = -44.5e6
-f_step = 0.01e6
+f_start = -190e6
+f_stop = -159e6
+f_step = 0.05e6
 qubit_f_list = np.arange(f_start, f_stop, f_step)
-qubit_ascale = 1.7
+
+qubit_ascale = 2
 qubit_op = "CW"  # qubit operation as defined in config
+
+qubit_pi_f = 75.95e6
+qubit_pi = "pi"
 
 # Measurement pulse
 rr = stg.rr
 rr_f = rr.int_freq
-rr_ascale = 0.2
+rr_ascale = 0.0175
 rr_op = "readout"
-integW1, integW2 = "integW1", "integW2"  # integration weights for I and Q
-
+integW1 = "integW1"  # integration weight for I
+integW2 = "integW2"  # integration weight for Q
 # NOTE: The weights must be defined in configuration.py for the chosen msmt operation
 
 with program() as qubit_spec:
@@ -44,7 +44,7 @@ with program() as qubit_spec:
     n = declare(int)
 
     # Spectroscopy loop variable
-    qu_freq = declare(int)
+    qu_f = declare(int)
 
     # Outputs
     I = declare(fixed)
@@ -59,19 +59,20 @@ with program() as qubit_spec:
     update_frequency(rr.name, rr_f)
 
     with for_(n, 0, n < reps, n + 1):
-        with for_(qu_freq, f_start, qu_freq < f_stop, qu_freq + f_step):
+        with for_(qu_f, f_start, qu_f < f_stop, qu_f + f_step):
 
-            # g to e pulse
-            update_frequency(qubit.name, qubit_prep_freq)
-            play(qubit_prep_op, qubit.name)
+            ## pi pulse: to excite qubit from g to e
+            update_frequency(qubit.name, qubit_pi_f)
+            play(qubit_pi, qubit.name)
 
-            # e to f probe pulse
-            update_frequency(qubit.name, qu_freq)
+            ## CW pulse: 
+            update_frequency(qubit.name, qu_f)
             play(qubit_op * amp(qubit_ascale), qubit.name)
 
-            # e to g pulse
-            update_frequency(qubit.name, qubit_prep_freq)
-            play(qubit_prep_op, qubit.name)
+
+            ## pi pulse: to release qubit from e to g
+            update_frequency(qubit.name, qubit_pi_f)
+            play(qubit_pi, qubit.name)
 
             align(qubit.name, rr.name)
             measure(
@@ -99,55 +100,55 @@ with program() as qubit_spec:
 
 job = stg.qm.execute(qubit_spec)
 
-fig = plt.figure()
+
+fig = plt.figure(figsize=(20, 5))
 ax = fig.add_subplot(1, 1, 1)
 hdisplay = display.display("", display_id=True)
 raw_data = {}
 result_handles = job.result_handles
-N = 300  # Maximum size of data batch for each refresh
+N = 100  # Maximum size of data batch for each refresh
 remaining_data = reps
 while remaining_data != 0:
-    # clear data from plot
+    # clear data
     ax.clear()
-
     # update data
     N = min(N, remaining_data)  # don't wait for more than there's left
-    raw_data = update_results(raw_data, N, result_handles, ["I", "Q"])
-    I = raw_data["I"]
-    Q = raw_data["Q"]
-    I_avg = np.average(I, axis=0)
-    Q_avg = np.average(Q, axis=0)
-
-    # process data
-    amps = np.abs(I + 1j * Q)
-    amps_avg = np.abs(I_avg + 1j * Q_avg)  # Must average before taking the amp
-    std_err = np.std(amps, axis=0) / np.sqrt(amps.shape[0])
+    raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg"])
+    I_avg = raw_data["I_avg"][-1]
+    Q_avg = raw_data["Q_avg"][-1]
+    amps = np.abs(I_avg + 1j * Q_avg)
     remaining_data -= N
 
-    # plot fitted curve with errorbars
-    params = plot_fit(qubit_f_list, amps_avg, ax, yerr=std_err, fit_func="lorentzian")
+    # plot averaged data
+    ax.scatter(qubit_f_list / 1e6, amps)
 
-    # customize figure
+    # plot fitted curve
+    params = plot_fit(qubit_f_list/1e6, amps, ax, fit_func='lorentzian')
     ax.set_title("average of %d results" % (reps - remaining_data))
-    ax.legend(loc="upper left", bbox_to_anchor=(0, -0.1))  # Relocate legend box
 
     # update figure
     hdisplay.update(fig)
 
+I = result_handles.get("I_avg").fetch_all(flat_struct=True)[-1]
+Q = result_handles.get("Q_avg").fetch_all(flat_struct=True)[-1]
+result = np.abs(I + 1j * Q)
 
+plt.figure(figsize=(15, 5))
+plt.plot(qubit_f_list, result)
+plt.show()
 ########################################################################################
 ############################           SAVE RESULTS         ############################
 ########################################################################################
 
 metadata = f"{reps = }, {f_start = }, {f_stop = }, {f_step = }, {wait_time = }, \
-      {qubit_ascale = }, {qubit_op = }, {qubit_prep_op = }, {qubit_prep_a = }, {qubit_prep_freq = }, {rr_f = }, {rr_ascale = }, {rr_op = }"
+      {qubit_ascale = }, {qubit_op = }, {rr_f = }, {rr_ascale = }, {rr_op = }"
 filename = f"{datetime.now().strftime('%H-%M-%S')}_{MEAS_NAME}"
 datapath = DATA_FOLDER_PATH / (filename + ".csv")
 imgpath = DATA_FOLDER_PATH / (filename + ".png")
 
 with datapath.open("w") as f:
     f.write(metadata)
-    np.savetxt(datapath, [qubit_f_list, amps_avg], delimiter=",")
+    np.savetxt(datapath, [qubit_f_list, amps], delimiter=",")
 plt.savefig(imgpath)
 
 ########################################################################################

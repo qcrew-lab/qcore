@@ -20,12 +20,12 @@ wait_time = 75000  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-a_start = -1.1
-a_stop = 1.1
+a_start = -1.6
+a_stop = 1.6
 a_step = 0.05
 qubit_a_list = np.arange(a_start, a_stop, a_step)
 qubit_f = qubit.int_freq
-qubit_op = "pi"  # qubit operation as defined in config
+qubit_op = "sqpi"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
@@ -61,7 +61,8 @@ with program() as power_rabi:
             #frame_rotation_2pi(angle_ascale, qubit.name) 
             play(qubit_op * amp(a), qubit.name)
             #frame_rotation_2pi(-angle_ascale, qubit.name) 
-            play(qubit_op * amp(a), qubit.name)
+
+            #play(qubit_op * amp(a), qubit.name)
             align(qubit.name, rr.name)
             measure(
                 rr_op * amp(rr_ascale),
@@ -94,7 +95,7 @@ ax = fig.add_subplot(1, 1, 1)
 hdisplay = display.display("", display_id=True)
 raw_data = {}
 result_handles = job.result_handles
-N = 500  # Maximum size of data batch for each refresh
+N = 100  # Maximum size of data batch for each refresh
 remaining_data = reps
 while remaining_data != 0:
     # clear data from plot

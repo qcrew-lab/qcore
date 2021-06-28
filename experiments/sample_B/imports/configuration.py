@@ -40,12 +40,16 @@ def IQ_imbalance(gain: float, phase: float) -> list[float]:
 # readout pulse
 rr_time_of_flight = 1600  # in ns
 rr_LO = 9.453e9
-rr_IF = -49.4e6  # int(-49.5e6) # int(-49.3e6)  # int(-49.35e6)  # int(-49.51e6)
+rr_IF = -49.4e6
 
 # qubit pulse
-# g-e transition
-qubit_LO = 4.1235e9  # int(4.1286e+9)
-qubit_IF = -47.55e6  # int(-47.55e6) -47.95e6
+# g-e transition, dodn't delete below commented codes
+qubit_LO = 4.1235e9
+qubit_IF = -47.55e6
+
+# qubit_LO = 4.0e9
+# qubit_IF = -47.55e6
+
 
 rr_mixer_gain = 0.048832416534423814
 rr_mixer_phase = -0.10307483673095706
@@ -101,8 +105,8 @@ gaussian_drag_pulse_len = len(gaussian_derivative_wf_samples)
 # qubit square pi and pi2 pulses
 sq_pi_len = 512  # must be an integer multiple of 4 >= 16
 sq_pi2_len = 256  # must be an integer multiple of 4 >= 16
-sq_pi_amp = 0.25 * 2  # must be float in the interval (-0.5, 0.5)
-sq_pi2_amp = 0.25 * 2
+sq_pi_amp = 0.25 
+sq_pi2_amp = 0.25
 # Notice:
 # Here the initial voltage has been set as the maximum 0.5, double of 0.25
 # In the script, the square pi pulse relative amplitude ascale has to be set as 1

@@ -21,7 +21,6 @@ def live_fetch(job: QmJob, reps: int, interval: int=100) -> None:
             if isinstance(handle, MultipleNamedJobResult):
                 handle.wait_for_values(num_have_got + interval)
                 
-                print("num_have_got:",name, num_have_got)
                 if (reps - num_have_got) > interval:
                     update_result_dict[name] = handle.fetch(
                         slice(num_have_got , num_have_got + interval), flat_struct=True
@@ -64,7 +63,7 @@ def get_last_average_data(data: dict, i_tag: str, q_tag: str) -> None:
     return signal
 
 
-def save_figure(database: h5py.File) -> None:
+def save_figure(fig, database: h5py.File) -> None:
     p = Path(database.filename)
     name = p.stem
     folder = Path(database.filename).parent.absolute()
@@ -72,5 +71,5 @@ def save_figure(database: h5py.File) -> None:
     print(folder)
     filename = name + ".png"
     full_path = folder / filename
-    plt.savefig(full_path, format="png", dpi=600)
+    fig.savefig(full_path, format="png", dpi=600)
     print(f"Plot saved at {full_path}")

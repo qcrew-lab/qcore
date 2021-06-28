@@ -19,9 +19,9 @@ wait_time = 80000  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-f_start = -50e6
-f_stop = -45e6
-f_step = 0.02e6
+f_start = -80e6
+f_stop = -30e6
+f_step = 0.03e6
 qubit_f_list = np.arange(f_start, f_stop, f_step)
 qubit_ascale = 1.6
 qubit_op = "CW"  # qubit operation as defined in config
@@ -107,7 +107,7 @@ while remaining_data != 0:
     ax.scatter(qubit_f_list / 1e6, amps)
 
     # plot fitted curve
-    params = plot_fit(qubit_f_list/1e6, amps, ax, fit_func='lorentzian')
+    params = plot_fit(qubit_f_list / 1e6, amps, ax, fit_func="lorentzian")
     ax.set_title("average of %d results" % (reps - remaining_data))
 
     # update figure
