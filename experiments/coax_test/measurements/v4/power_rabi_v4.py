@@ -31,9 +31,8 @@ metadata = {
     "qubit_int_freq": stg.qubit.int_freq,  # frequency played by OPX to qubit
 }
 
-metadata["sweep_length"] = len(  # add sweep length to metadata
-    np.arange(metadata["start"], metadata["stop"], metadata["step"])
-)
+x_start, x_stop, x_step = metadata["start"], metadata["stop"], metadata["step"]
+metadata["sweep_length"] = len(np.arange(x_start, x_stop, x_step))
 
 ########################        QUA PROGRAM DEFINITION        ##########################
 
@@ -48,8 +47,6 @@ with program() as power_rabi:
     I_stream = declare_stream()  # to save "I"
     Q = declare(fixed)  # result variable "Q"
     Q_stream = declare_stream()  # to save "Q"
-    # unpack start, stop, step from the metadata dictionary for convenience
-    x_start, x_stop, x_step = metadata["start"], metadata["stop"], metadata["step"]
 
     #######################        MEASUREMENT SEQUENCE        #########################
 
@@ -137,13 +134,10 @@ with DataSaver(db) as datasaver:
         else:
             stats = get_std_err(ys_raw, ys_avg, num_fetched_results)
 
-        fit_params = fit.do_fit(metadata["fit_fn"], xs, ys_avg[-1])  # get fit params
-        ys_fit = fit.eval_fit(metadata["fit_fn"], fit_params, xs)  # get fit values
-
         #################            LIVE PLOT AVAILABLE RESULTS         ###############
 
         plotter.live_plot(
-            x=xs, y=ys_avg[-1], n=num_fetched_results, fit=ys_fit, err=stats[0]
+            xs, ys_avg[-1], num_fetched_results, fit_fn=metadata["fit_fn"], err=stats[0]
         )
         time.sleep(1)  # prevent over-fetching, over-saving, ulta-fast live plotting
 
@@ -151,7 +145,7 @@ with DataSaver(db) as datasaver:
 
     # to save final average and sweep variables, we extract them from "partial_results"
     final_save_dict = {"Y_AVG": ys_avg[-1], "X": xs}
-    datasaver.add_multiple_results(final_save_dict, group = "data")
+    datasaver.add_multiple_results(final_save_dict, group="data")
     # NOTE (OPTIONAL) here, we can also save the final plot.
 
 ###############################          fin           #################################
