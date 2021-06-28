@@ -2,12 +2,10 @@
 
 import matplotlib.pyplot as plt
 from IPython import display
+from qcrew.codebase.analysis import fit
 
 
 class Plotter:
-
-    live_plot_refresh_delay: float = 0.1
-
     """ Single axis x-y plotter. Supports line, scatter, and errorbar plot. Provides a rudimentary live plotting routine. """
     def __init__(self, title: str, xlabel: str, ylabel: str = "Signal (A.U.)"):
         plt.rcParams["figure.figsize"] = (12, 8)  # adjust figure size
@@ -16,7 +14,7 @@ class Plotter:
         self.xlabel: str = xlabel
         self.ylabel: str = ylabel
 
-    def live_plot(self, x, y, n, fit = None, err = None):
+    def live_plot(self, x, y, n, fit_fn = None, err = None):
         """" If `live_plot(data)` is called in an IPython terminal context, the axis is refreshed and plotted with the new data using IPython `display` tools. """
         plt.cla()
 
@@ -25,8 +23,10 @@ class Plotter:
         else:
             self.plot_scatter(x, y)
 
-        if fit is not None:
-            self.plot_line(x, fit, "fit")
+        if fit_fn is not None:
+            fit_params = fit.do_fit(fit_fn, x, y)  # get fit params
+            y_fit = fit.eval_fit(fit_fn, fit_params, x)  # get fit values
+            self.plot_line(x, y_fit, label="fit")
 
         plt.title(self.figtitle + f": {n} reps")
         plt.xlabel(self.xlabel)
