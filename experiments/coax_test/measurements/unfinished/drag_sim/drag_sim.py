@@ -1,9 +1,16 @@
 """ Check drag pulse waveforms with the QM simulator """
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from qm.qua import program, play, amp
+from qm.qua import program, play, amp, wait, declare, for_
 from qm import SimulationConfig
-from .configuration import qm_config, DRAG_COEFFICIENT, DRAG_PULSE_LEN
-from .helpers import plot_waveforms, get_processed_samples
+from qcrew.experiments.coax_test.measurements.unfinished.drag_sim.configuration import (
+    qm_config,
+    DRAG_COEFFICIENT,
+    DRAG_PULSE_LEN,
+)
+from qcrew.experiments.coax_test.measurements.unfinished.drag_sim.helpers import (
+    plot_waveforms,
+    get_processed_samples,
+)
 
 qmm = QuantumMachinesManager()
 
@@ -11,11 +18,15 @@ qmm = QuantumMachinesManager()
 
 # in "test1", we scale "drag1" Q waveform in qua loop
 with program() as test1:
-    play("drag1" * amp(1.0, 0.0, 0.0, DRAG_COEFFICIENT), "qubit")
+    i = declare(int)
+    with for_(i, 0, i < 1, i+1):
+        play("drag1" * amp(1.0, 0.0, 0.0, DRAG_COEFFICIENT), "qubit")
 
 # in "test2", we play "drag2", whose Q waveform is scaled in the QM config
 with program() as test2:
-    play("drag2", "qubit")
+    i = declare(int)
+    with for_(i, 0, i < 1, i+1):
+        play("drag2" * amp(1.0), "qubit")
 
 ##############################     SIMULATION SETUP     ################################
 

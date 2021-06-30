@@ -26,10 +26,6 @@ SIGMA, CHOP = 175, 4
 DRAG1_WF_SAMPLES_I, DRAG1_WF_SAMPLES_Q = drag_wfs(AMPX, DRAG, SIGMA, CHOP)
 DRAG_PULSE_LEN = SIGMA * CHOP
 
-plt.plot(DRAG1_WF_SAMPLES_I)
-plt.plot(DRAG1_WF_SAMPLES_Q)
-plt.plot(DRAG1_WF_SAMPLES_Q * DRAG_COEFFICIENT)
-
 ################################      QM CONFIG      ###################################
 
 qm_config = {
