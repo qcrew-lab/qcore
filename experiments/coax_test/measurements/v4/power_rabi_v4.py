@@ -16,10 +16,10 @@ DATAPATH = Path.cwd() / "data"
 #########################        MEASUREMENT PARAMETERS        #########################
 
 metadata = {
-    "reps": 20000,  # number of sweep repetitions
+    "reps": 10000,  # number of sweep repetitions
     "wait": 50000,  # delay between reps in ns, an integer multiple of 4 >= 16
-    "start": -2.0,  # amplitude sweep range is set by start, stop, and step
-    "stop": 2.0,
+    "start": -1.9,  # amplitude sweep range is set by start, stop, and step
+    "stop": 1.9,
     "step": 0.2,
     "qubit_op": "gaussian",  # qubit pulse name as defined in the config
     "rr_op": "readout",  # readout pulse name
@@ -32,7 +32,7 @@ metadata = {
 }
 
 x_start, x_stop, x_step = metadata["start"], metadata["stop"], metadata["step"]
-metadata["sweep_length"] = len(np.arange(x_start, x_stop, x_step))
+metadata["sweep_length"] = len(np.arange(x_start, x_stop + x_step / 2, x_step))
 
 ########################        QUA PROGRAM DEFINITION        ##########################
 
@@ -51,7 +51,7 @@ with program() as power_rabi:
     #######################        MEASUREMENT SEQUENCE        #########################
 
     with for_(n, 0, n < metadata["reps"], n + 1):
-        with for_(x, x_start, x < x_stop - x_step / 2, x + x_step):
+        with for_(x, x_start, x < x_stop + x_step / 2, x + x_step):
             play(metadata["qubit_op"] * amp(x), stg.qubit.name)
             align(stg.qubit.name, stg.rr.name)
             measure(
@@ -119,7 +119,6 @@ with DataSaver(db) as datasaver:
         num_results = fetcher.count  # get number of results fetched so far
         if not partial_results:  # empty dict return means no new results are available
             continue
-
         ####################            LIVE SAVE RESULTS         ######################
 
         # to only live save raw "I" and "Q" data, we extract them from "partial_results"
