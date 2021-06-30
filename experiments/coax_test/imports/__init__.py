@@ -1,18 +1,20 @@
-# imports needed for v4 scripts
 from importlib import reload
-from qcrew.experiments.coax_test.imports import configuration as cfg
-from qcrew.experiments.coax_test.imports import stage as stg
 from pathlib import Path
+import time
+
 import numpy as np
 from qm.qua import *
+
+from qcrew.experiments.coax_test.imports import configuration as cfg
+from qcrew.experiments.coax_test.imports import stage as stg
+from qcrew.codebase.datasaver.hdf5_helper import initialise_database, DataSaver
 from qcrew.codebase.utils.fetcher import Fetcher
 from qcrew.codebase.utils.plotter import Plotter
 from qcrew.codebase.utils.statistician import get_std_err
-from qcrew.codebase.datasaver.hdf5_helper import initialise_database, DataSaver
-import time
 
 
-# imports not needed for v4 scripts
+################           IMPORTS NOT NEEDED FOR V4 SCRIPTS           #################
+# NOTE WE NEED TO GET RID OF THESE ASAP!
 
 import matplotlib.pyplot as plt
 from IPython import display
@@ -22,7 +24,6 @@ from qcrew.codebase.analysis.plot import plot_fit
 from qcrew.codebase.analysis.qm_get_results import update_results
 from qcrew.codebase.analysis.plot import FakeLivePlotter
 from qcrew.codebase.analysis import fit
-from qcrew.codebase.utils.dummy_datasaver import DummyDatasaver
 from qcrew.codebase.utils.fixed_point_library import Fixed, Int
 from datetime import datetime, date, timedelta
 
