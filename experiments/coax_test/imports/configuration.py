@@ -1,5 +1,8 @@
 """ DO NOT DUPLICATE THIS FILE WHILE YOU ARE CONDUCTING THE EXPERIMENT 'COAX_TEST'
 This file is the one and only place to change parameters between measurement runs"""
+
+BASE_AMP = 0.2
+
 ########################################################################################
 ##########################           HELPER FUNCTIONS        ###########################
 ########################################################################################
@@ -32,6 +35,15 @@ def IQ_imbalance(gain: float, phase: float) -> list[float]:
     matrix = [(1 - gain) * cos, (1 + gain) * sin, (1 - gain) * sin, (1 + gain) * cos]
     correction_matrix = [float(coeff * x) for x in matrix]
     return correction_matrix
+
+
+def get_gaussian_waveforms(
+    ampx: float, drag: float, sigma: float, chop: int
+) -> tuple[np.ndarray]:
+    ts = np.linspace(-chop / 2 * sigma, chop / 2 * sigma, chop * sigma)
+    i_wf = BASE_AMP * ampx * np.exp(-(ts ** 2) / (2.0 * sigma ** 2))
+    q_wf = drag * (np.exp(0.5) / sigma) * -ts * i_wf
+    return i_wf, q_wf
 
 
 ########################################################################################
@@ -71,13 +83,17 @@ rr_mixer_offsets = {  # NOTE: copy paste results of mixer tuning here
 ################################### ARBITRARY PULSES ###################################
 
 cw_pulse_len = 1000  # must be an integer multiple of 4 >= 16
-cw_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
+cw_pulse_amp = BASE_AMP  # must be float in the interval (-0.5, 0.5)
 
 readout_pulse_len = 1000  # must be an integer multiple of 4 >= 16
-readout_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
+readout_pulse_amp = BASE_AMP  # must be float in the interval (-0.5, 0.5)
 
 saturation_pulse_len = 15000  # must be an integer multiple of 4 >= 16
-saturation_pulse_amp = 0.2  # must be float in the interval (-0.5, 0.5)
+saturation_pulse_amp = BASE_AMP  # must be float in the interval (-0.5, 0.5)
+
+# NOTE use get_gaussian_waveforms() to get I and Q waveforms for Gaussian pulses
+# set drag = 0.0, if you want no drag correction
+# gauss_I_wf_samples, gauss_Q_wf_samples = get_gaussian_waveforms(1.0, 0.0, 200, 4)
 
 # (maximum, sigma, multiple_of_sigma)
 gaussian_pulse_wf_I_samples = gaussian_fn(0.2, 200, 4)
