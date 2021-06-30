@@ -15,11 +15,16 @@ MEAS_NAME = "time_rabi"  # used for naming the saved data file
 ########################################################################################
 
 # Loop parameters
-reps = 20000
+reps = 30000
 wait_time = 75000  # in clock cycles
 
 # Measurement pulse
 update_rr_if = True
+
+qubit_ascale = 1.0
+qubit = stg.qubit
+qubit_f = qubit.int_freq  # IF frequency of qubit pulse
+qubit_op = "sqpi"  # qubit operation as defined in config
 
 rr = stg.rr
 rr_if = rr.int_freq
@@ -29,29 +34,11 @@ integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
 # NOTE: The weights must be defined for the chosen measurement operation
 
-# wait time between two pluse
 t_start = 4
-t_stop = 400
-t_step = 4  # in clock cycle
+t_stop = 240
+t_step = 2  # in clock cycle
 t_list = np.arange(t_start, t_stop, t_step)
 
-qubit_ascale = 2
-qubit = stg.qubit
-qubit_f = qubit.int_freq  # IF frequency of qubit pulse
-qubit_op = "pi"  # qubit operation as defined in config
-
-# Rearranges the input parameters in arrays over which QUA can
-# iterate. The arrays are given in the order of outer to inner
-# loop.
-# parameter_list = [
-#     (x.flatten()) for x in np.meshgrid(qubit_ascale, rr_ascale, indexing="ij")
-# ]
-
-# # Defines buffer size for averaging
-# buffer_lengths = [
-#     1 if type(x).__name__ in {"int", "float"} else len(x)
-#     for x in [qubit_ascale, rr_ascale, rr_f_list]
-# ]
 
 with program() as time_rabi:
     # Iteration variable
@@ -79,9 +66,13 @@ with program() as time_rabi:
         update_frequency("rr", rr_freq)
 
     # Averaging loop
+    # Comment: Add - t_step/2 to make sure that sweep point is consistent with the setting
     with for_(n, 0, n < reps, n + 1):  # outer averaging loop
-        with for_(t, t_start, t < t_stop, t + t_step):  # inner frequency sweep
+        with for_(
+            t, t_start, t < t_stop - t_step / 2, t + t_step
+        ):  # inner frequency sweep
 
+            play(qubit_op * amp(qubit_a), "qubit", duration=t)
             play(qubit_op * amp(qubit_a), "qubit", duration=t)
 
             align("qubit", "rr")
@@ -128,6 +119,17 @@ while remaining_data != 0:
     # update data
     N = min(N, remaining_data)  # don't wait for more than there's left
     raw_data = update_results(raw_data, N, result_handles, ["I_avg", "Q_avg", "I", "Q"])
+    I = raw_data["I"]
+    Q = raw_data["Q"]
+    I_avg = np.average(I, axis=0)
+    Q_avg = np.average(Q, axis=0)
+
+    # process data
+    amps = np.abs(I + 1j * Q)
+    amps_avg = np.abs(I_avg + 1j * Q_avg)  # Must average before taking the amp
+    std_err = np.std(amps, axis=0) / np.sqrt(amps.shape[0])
+    remaining_data -= N
+
     I_avg = raw_data["I_avg"][-1]
     Q_avg = raw_data["Q_avg"][-1]
     amps = np.abs(I_avg + 1j * Q_avg)
@@ -139,11 +141,11 @@ while remaining_data != 0:
     remaining_data -= N
 
     # plot averaged data
-    #ax.plot(t_list, amps)
+    # ax.plot(t_list, amps)
 
     # plot fitted curve
-    #params = plot_fit(t_list, amps, ax, yerr=std_err, fit_func="sine")
-    ax.errorbar(t_list, amps, yerr=std_err, fmt='o')
+    # params = plot_fit(t_list, amps, ax, yerr=std_err, fit_func="sine")
+    ax.errorbar(t_list, amps, yerr=std_err, fmt="o")
     params = plot_fit(t_list, amps, ax, fit_func="sine")
     ax.set_title("average of %d results" % (reps - remaining_data))
     # update figure

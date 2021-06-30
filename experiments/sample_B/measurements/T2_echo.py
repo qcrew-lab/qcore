@@ -26,9 +26,9 @@ integW2 = "integW2"  # integration weight for Q
 # NOTE: The weights must be defined in configuration.py for the chosen msmt operation
 
 # Wait time between two pulses in clock cycles
-t_start = 1  # must be integer >= 4, this is in multiples of 4 ns.
-t_stop = 1500
-t_step = 10
+t_start = 4  # in ns 
+t_stop = 800
+t_step = 20
 t_list = np.arange(t_start, t_stop, t_step)
 
 
@@ -37,8 +37,8 @@ detuning = 0.0e6  # 0.7e6  # 700e3  # 0.05e6  # Qubit drive detuning
 qubit = stg.qubit
 qubit_ascale = 2  # -1.1 / 2
 qubit_f = qubit.int_freq - detuning  # IF of qubit pulse
-qubit_op_pi2 = "pi2"  # pi/2 qubit operation as defined in config
-qubit_op_pi = "pi" 
+qubit_op_pi2 = "sqpi2"  # pi/2 qubit operation as defined in config
+qubit_op_pi = "sqpi" 
 # qubit_op = "pi2" 
 
 with program() as t2:
@@ -64,10 +64,13 @@ with program() as t2:
     # Averaging loop
     with for_(n, 0, n < reps, n + 1):  # outer averaging loop
         with for_(t, t_start, t < t_stop, t + t_step):  # inner frequency sweep
+
             play(qubit_op_pi2, qubit.name)
-            wait(t/2, qubit.name) #Yvonne added the /2, check if you understand why. 
+            wait(t, qubit.name) #Yvonne added the /2, check if you understand why. 
+
             play(qubit_op_pi, qubit.name)
-            wait(t/2, qubit.name)
+            wait(t, qubit.name)
+            
             play(qubit_op_pi2, qubit.name)
 
             align(qubit.name, rr.name)

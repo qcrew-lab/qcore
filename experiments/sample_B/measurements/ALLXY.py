@@ -18,7 +18,7 @@ wait_time = 75000  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-qubit_pi_op = "gaussian"  # qubit pi operation as defined in config.
+qubit_pi_op = "pi"  # qubit pi operation as defined in config.
 qubit_f = qubit.int_freq  # qubit.int_freq
 
 # Measurement pulse

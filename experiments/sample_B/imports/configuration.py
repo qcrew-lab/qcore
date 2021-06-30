@@ -39,13 +39,13 @@ def IQ_imbalance(gain: float, phase: float) -> list[float]:
 ########################################################################################
 # readout pulse
 rr_time_of_flight = 1600  # in ns
-rr_LO = 9.453e9
-rr_IF = -49.4e6
+rr_LO = int(9.453e9)
+rr_IF = int(-49.4e6)
 
 # qubit pulse
 # g-e transition, dodn't delete below commented codes
-qubit_LO = 4.1235e9
-qubit_IF = -47.55e6
+qubit_LO = int(4.1235e9)
+qubit_IF = int(-47.55e6)
 
 # qubit_LO = 4.0e9
 # qubit_IF = -47.55e6
@@ -94,46 +94,46 @@ saturation_pulse_len = 4000
 saturation_pulse_amp = 0.25
 
 # (maximum, sigma, multiple_of_sigma)
-gaussian_pulse_wf_I_samples = gaussian_fn(0.25 * 1.71, 180, 5)
+gaussian_pulse_wf_I_samples = gaussian_fn(0.25, 125, 4)
 gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
 
 # (maximum, drag, sigma, multiple_of_sigma)
-gaussian_derivative_wf_samples = gaussian_derivative_fn(0.2 * 1.71, 37.9, 180, 5)
+gaussian_derivative_wf_samples = gaussian_derivative_fn(0.25, 1, 125, 4)
 gaussian_drag_pulse_len = len(gaussian_derivative_wf_samples)
 
 ################################### EXCLUSIVE PULSES ###################################
 # qubit square pi and pi2 pulses
 sq_pi_len = 512  # must be an integer multiple of 4 >= 16
 sq_pi2_len = 256  # must be an integer multiple of 4 >= 16
-sq_pi_amp = 0.25 
-sq_pi2_amp = 0.25
+sq_pi_amp = 0.25 * 1.445
+sq_pi2_amp = 0.25 * 1.445
 # Notice:
 # Here the initial voltage has been set as the maximum 0.5, double of 0.25
 # In the script, the square pi pulse relative amplitude ascale has to be set as 1
 
 # qubit gaussian pi pulse
-gauss_pi_amp = 0.25 * 1.71  ##0.25 * 1.71
-gauss_pi_sigma = 180
-gauss_pi_chop = 5
+gauss_pi_amp = 0.25 * 1.8  # 1.846
+gauss_pi_sigma = 125  # 120  160
+gauss_pi_chop = 4
 gauss_pi_samples = gaussian_fn(gauss_pi_amp, gauss_pi_sigma, gauss_pi_chop)
 gauss_pi_len = len(gauss_pi_samples)
 
 # DRAG correction
-drag_coeff = 13.27
+drag_coeff = 47
 gauss_pi_drag_samples = gaussian_derivative_fn(
     gauss_pi_amp, drag_coeff, gauss_pi_sigma, gauss_pi_chop
 )
 
 # qubit gaussian pi2 pulse
-gauss_pi2_amp = 0.25 * 0.85
-gauss_pi2_sigma = 180
-gauss_pi2_chop = 5
+gauss_pi2_amp = 0.25 * 0.9  # minus 0.02
+gauss_pi2_sigma = 125
+gauss_pi2_chop = 4
 gauss_pi2_samples = gaussian_fn(gauss_pi2_amp, gauss_pi2_sigma, gauss_pi2_chop)
 gauss_pi2_len = len(gauss_pi2_samples)
 
-drag_coeff = 13.27
+drag_coeff_pi2 = 47
 gauss_pi2_drag_samples = gaussian_derivative_fn(
-    gauss_pi2_amp, drag_coeff, gauss_pi2_sigma, gauss_pi2_chop
+    gauss_pi2_amp, drag_coeff_pi2, gauss_pi2_sigma, gauss_pi2_chop
 )
 
 ########################################################################################

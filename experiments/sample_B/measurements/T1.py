@@ -33,9 +33,9 @@ t_list = np.arange(t_start, t_stop, t_step)
 
 # Qubit pulse
 qubit = stg.qubit
-qubit_ascale = 2  # based on power rabi fit
+qubit_ascale = 1  # based on power rabi fit
 qubit_f = qubit.int_freq  # IF of qubit pulse
-qubit_op = "pi"  # qubit operation as defined in config
+qubit_op = "sqpi"  # qubit operation as defined in config
 
 with program() as t1:
     # Iteration variable

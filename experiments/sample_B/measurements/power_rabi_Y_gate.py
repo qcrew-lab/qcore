@@ -20,9 +20,9 @@ wait_time = 75000  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-a_start = -1.1
-a_stop = 1.1
-a_step = 0.04
+a_start = -2
+a_stop = 2
+a_step = 0.05
 qubit_a_list = np.arange(a_start, a_stop, a_step)
 qubit_f = qubit.int_freq
 qubit_op = "pi2"  # qubit operation as defined in config
@@ -37,28 +37,30 @@ integW1 = "integW1"  # integration weight for I
 integW2 = "integW2"  # integration weight for Q
 # NOTE: The weights must be defined in configuration.py for the chosen msmt operation
 
+angle_ascale = 0.25  #  0~1 corresponding to the 0~2pi of the frame rotation
+
 with program() as power_rabi:
     n = declare(int)
     a = declare(fixed)
-    
+
     I = declare(fixed)
     Q = declare(fixed)
     I_st = declare_stream()
     Q_st = declare_stream()
     I_st_avg = declare_stream()
     Q_st_avg = declare_stream()
-    a_st = declare_stream()
 
     update_frequency(rr.name, rr_f)
     update_frequency(qubit.name, qubit_f)
-
+    
     with for_(n, 0, n < reps, n + 1):
-        with for_(a, a_start, a < a_stop - a_step/2, a + a_step):
-
+        with for_(a, a_start, a < a_stop -a_step/2, a + a_step):
+            
+            reset_frame(qubit.name)
+            frame_rotation_2pi(angle_ascale, qubit.name)
             play(qubit_op * amp(a), qubit.name)
-
-            play(qubit_op * amp(a), qubit.name)
-
+            # play(qubit_op * amp(a), qubit.name)
+            frame_rotation_2pi(-angle_ascale, qubit.name)
             align(qubit.name, rr.name)
             measure(
                 rr_op * amp(rr_ascale),
@@ -72,10 +74,8 @@ with program() as power_rabi:
             save(Q, Q_st_avg)
             save(I, I_st)
             save(Q, Q_st)
-            save(a, a_st)
 
     with stream_processing():
-        a_st.buffer(len(qubit_a_list)).save("a")
         I_st_avg.buffer(len(qubit_a_list)).average().save_all("I_avg")
         Q_st_avg.buffer(len(qubit_a_list)).average().save_all("Q_avg")
         I_st.buffer(len(qubit_a_list)).save_all("I")
@@ -123,10 +123,6 @@ while remaining_data != 0:
     # update figure
     hdisplay.update(fig)
 
-
-
-handle = job.result_handles
-a_result = handle.get("a").fetch_all()
 # please see "qm_get_results.py" in "analysis" package in "codebase" for an attempt
 # to get partial results from QM
 
