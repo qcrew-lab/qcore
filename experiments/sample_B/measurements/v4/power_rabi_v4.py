@@ -92,7 +92,7 @@ job = stg.qm.execute(power_rabi)
 
 fetcher = Fetcher(handle=job.result_handles, num_results=metadata["reps"])
 plotter = Plotter(title=EXP_NAME, xlabel="Amplitude scale factor")
-stats = tuple()  # to hold variables needed to calculate std error in one pass
+stats = (None, None, None)  # to hold running stats (stderr, mean, variance * (n-1))
 db = initialise_database(
     exp_name=EXP_NAME,
     sample_name=SAMPLE_NAME,
@@ -129,10 +129,7 @@ with DataSaver(db) as datasaver:
 
         ys_raw = np.sqrt(partial_results["Y_SQ_RAW"])
         ys_raw_avg = np.sqrt(partial_results["Y_SQ_RAW_AVG"])
-        if stats:  # stats = (y_std_err, running average, running variance * (count-1))
-            stats = get_std_err(ys_raw, ys_raw_avg, num_results, *stats)
-        else:
-            stats = get_std_err(ys_raw, ys_raw_avg, num_results)
+        stats = get_std_err(ys_raw, ys_raw_avg, num_results, *stats)
 
         #################            LIVE PLOT AVAILABLE RESULTS         ###############
 
