@@ -34,7 +34,7 @@ class Fetcher:
                 self._spec["multiple"][tag] = self._fetch_multiple
                 result.wait_for_values(2)
 
-    def fetch(self) -> dict[str, np.ndarray]:
+    def fetch(self) -> tuple:
         """To be called during a live measurement post-processing loop. Fetches the latest available results for all tags in result handle.
 
         Returns:
@@ -48,13 +48,13 @@ class Fetcher:
                 self.is_fetching = False  # fetching is complete
                 if self.count > self.total_count:
                     print(f"WARNING: EXTRA RESULTS ({self.count}, {self.total_count})")
-            return dict()  # return empty dict because no new results to fetch
+            return (self.count, dict())  # return empty dict because no new results to fetch
 
         partial_results = dict()  # populate and return partial results dictionary
         for result_type in self._spec:
             for tag in self._spec[result_type]:
                 partial_results[tag] = self._spec[result_type][tag](tag)
-        return partial_results
+        return (self.count, partial_results)
 
     def _fetch_single(self, tag):
         """ Internal method for dealing with SingleNamedJobResult """
@@ -64,3 +64,6 @@ class Fetcher:
         """ Internal method for dealing with MultipleNamedJobResult """
         slc = slice(self.last_count, self.count)
         return self.handle.get(tag).fetch(slc, flat_struct=True)
+
+
+

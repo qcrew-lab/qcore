@@ -1,3 +1,5 @@
+"""Alternative methods for fetching data from qm. It is not in use. Please refer codebase/utils/fetcher"""
+
 from qm.QmJob import QmJob
 from qm import MultipleNamedJobResult, SingleNamedJobResult
 from qcrew.codebase.analysis.fit import do_fit, eval_fit
@@ -12,31 +14,7 @@ def live_fetch(job: QmJob, reps: int, interval: Optional[int]) -> None:
     
     job_results = job.result_handles
 
-<<<<<<< HEAD
-    num_have_got = 0
-
-    while job_results.is_processing() or num_have_got < reps:
-
-        # print(f"fetch_iteration {num_have_got}")
-        update_result_dict = {}
-        for name, handle in job_results:
-            if isinstance(handle, MultipleNamedJobResult):
-                handle.wait_for_values(num_have_got + interval)
-                
-                if (reps - num_have_got) > interval:
-                    update_result_dict[name] = handle.fetch(
-                        slice(num_have_got , num_have_got + interval), flat_struct=True
-                    )
-                else:
-                     update_result_dict[name] = handle.fetch(
-                        slice(num_have_got , reps), flat_struct=True
-                    )
-
-        yield (num_have_got, update_result_dict)
-        num_have_got = num_have_got + interval
-        time.sleep(2)
-=======
-    # Mode 1: fetch the data by fixed interval 
+    # Mode 1: fetch the data by fixed interval
     if interval: 
         num_have_got = 0
         while job_results.is_processing() or num_have_got < reps:
@@ -60,7 +38,7 @@ def live_fetch(job: QmJob, reps: int, interval: Optional[int]) -> None:
             num_have_got = num_sor_far
             time.sleep(2)
     
-    # Mode 2: fetch the data when result handle is updated 
+    # Mode 2: fetch the data when result handle is updated
     else:
         num_have_got_dict = {name: 0 for (name, handle) in job_results if isinstance(handle, MultipleNamedJobResult)}
 
@@ -87,7 +65,6 @@ def live_fetch(job: QmJob, reps: int, interval: Optional[int]) -> None:
             for key in num_so_far_dict.keys():
                 if key in num_have_got_dict.keys():
                     num_have_got_dict[key] = num_so_far[key]
->>>>>>> 95c065a1cbfd95c68366ab59964618dae0359532
 
 
 def final_fetch(job: QmJob) -> None:
@@ -100,35 +77,3 @@ def final_fetch(job: QmJob) -> None:
         if isinstance(handle, SingleNamedJobResult):
             result_dict[name] = handle.fetch_all(flat_struct=True)
     return result_dict
-
-
-def live_analysis(data: dict, i_tag: str, q_tag: str, x: np.ndarray, fit_function: str) -> None:
-
-    if i_tag in data.keys():
-        last_avg_i = data[i_tag][-1]
-    else:
-        raise ValueError(f"No data for the tag {i_tag}")
-
-    if q_tag in data.keys():
-        last_avg_q = data[q_tag][-1]
-    else:
-        raise ValueError(f"No data for the tag {q_tag}")
-
-    signal = np.abs(last_avg_i + 1j * last_avg_q)
-
-    fit_params = do_fit(fit_function, x, signal)  # get fit parameters
-    y_fit = eval_fit(fit_function, fit_params, x)  # get fit values
-
-    return signal, y_fit, fit_params
-
-
-def save_figure(fig, database: h5py.File) -> None:
-    p = Path(database.filename)
-    name = p.stem
-    folder = Path(database.filename).parent.absolute()
-    print(name)
-    print(folder)
-    filename = name + ".png"
-    full_path = folder / filename
-    fig.savefig(full_path, format="png", dpi=600)
-    print(f"Plot saved at {full_path}")

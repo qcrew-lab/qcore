@@ -11,7 +11,7 @@ import numpy as np
 import logging as log
 from uncertainties import UFloat
 from pathlib import Path
-from typing import Union, Optional, Dict
+from typing import Union, Optional, Dict, List
 import logging
 
 log = logging.getLogger(__name__)
@@ -688,10 +688,16 @@ class DataHandle:
         self.db.flush()
 
     def update_multiple_results(
-        self, data_dict: Dict[str, np.ndarray], group=Optional[str]
+        self, data_dict: Dict[str, np.ndarray], group=Optional[str], save = Optional[List[str]]
     ) -> None:
-        for i, (key, value) in enumerate(data_dict.items()):
-            self.update_result(name=key, data=value, group=group)
+        
+        if save:
+            for i, (key, value) in enumerate(data_dict.items()):
+                if key in save:
+                    self.update_result(name=key, data=value, group=group)
+        else: 
+            for i, (key, value) in enumerate(data_dict.items()):
+                self.update_result(name=key, data=value, group=group)
         self.db.flush()
 
     def add_result(
@@ -733,15 +739,20 @@ class DataHandle:
         self.db.flush()
 
     def add_multiple_results(
-        self, data_dict: dict, overwrite: bool = False, group=Optional[str]
+        self, data_dict: dict, overwrite: bool = False, group=Optional[str], save = Optional[List[str]]
     ) -> None:
         """
         Add multiple results to the database, cannot update the data.
         If the result is np.ndarray, the item will be stored as the dataset,
         while the result is string or value expect the np.ndarray, the item will be stored as the attribute
         """
-        for i, (key, value) in enumerate(data_dict.items()):
-            self.add_result(name=key, data=value, overwirte=overwrite, group=group)
+        if save:
+            for i, (key, value) in enumerate(data_dict.items()):
+                if key in save: 
+                    self.add_result(name=key, data=value, overwirte=overwrite, group=group)
+        else: 
+            for i, (key, value) in enumerate(data_dict.items()):
+                self.add_result(name=key, data=value, overwirte=overwrite, group=group)
 
     def add_metadata(self, metadata_dict: dict, overwrite: bool = False) -> None:
         if overwrite:
@@ -753,3 +764,12 @@ class DataHandle:
     def get_metadata(self, read_dict: dict) -> None:
         get_dict = read_dict_from_hdf5(read_dict, self.db)
         return get_dict
+
+
+def get_dict(results: dict, *args) -> dict:
+    get_dict = {}
+    for key in args:
+        if isinstance(key, str) and key in results.keys():
+            get_dict[key] = results
+    return get_dict
+
