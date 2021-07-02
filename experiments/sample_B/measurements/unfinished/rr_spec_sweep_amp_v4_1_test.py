@@ -22,7 +22,6 @@ metadata = {
     "qubit_op": "gaussian",  # qubit pulse name as defined in the config
     "qubit_name": stg.qubit.name,
     "qubit_ampx": 1,
-    "qubit_ampx_vec": [1, 1, 1, 1],
     "rr_op": "readout",  # readout pulse name
     "rr_name": stg.rr.name,
     "rr_ampx_vec": [0.01, 0.02, 0.03, 0.04],
@@ -67,14 +66,12 @@ with program() as rr_spec_amp:
     Q_stream = declare_stream()
 
     #######################        MEASUREMENT SEQUENCE        #########################
-
+    # with for_each_((qubit_amp, rr_amp), (mes.qubit_ampx_vec, mes.rr_ampx_vec)):
     with for_(n, 0, n < mes.reps, n + 1):
-        # Qubit and resonator pulse amplitude scaling loop
-        with for_each_((qubit_amp, rr_amp), (mes.qubit_ampx_vec, mes.rr_ampx_vec)):
-            # Frequency sweep
+        with for_each_(rr_amp, [0.01, 0.02, 0.03, 0.04]):
             with for_(f, mes.f_start, f < mes.f_stop + mes.f_step / 2, f + mes.f_step):
                 update_frequency(mes.rr_name, f)
-                play(mes.qubit_op * amp(qubit_amp), mes.qubit_name)
+                play(mes.qubit_op * amp(mes.qubit_ampx), mes.qubit_name)
                 align(mes.qubit_name, mes.rr_name)
                 measure(
                     mes.rr_op * amp(rr_amp),
