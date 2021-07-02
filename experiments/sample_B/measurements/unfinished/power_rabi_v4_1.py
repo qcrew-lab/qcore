@@ -40,7 +40,6 @@ mes = SimpleNamespace(**metadata)
 # Temporary solution, in version 5 it will be a measurement object whose properties are the parameters
 # The future measurement object will keep the same structure with the namep space
 
-mes = SimpleNamespace(**metadata)
 ########################        QUA PROGRAM DEFINITION        ##########################
 
 with program() as power_rabi:
