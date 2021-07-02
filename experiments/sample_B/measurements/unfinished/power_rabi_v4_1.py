@@ -34,7 +34,7 @@ metadata = {
 # create a namespace and convert the metadata dictionary into the parameters under this name space
 mes = SimpleNamespace(**metadata)
 
-a_start, a_stop, a_step = mes.a_start, mes.a_stop,  mes.a_step
+a_start, a_stop, a_step = mes.a_start, mes.a_stop, mes.a_step
 metadata["sweep_length"] = len(np.arange(a_start, a_stop + a_step / 2, a_step))
 
 # Temporary solution, in version 5 it will be a measurement object whose properties are the parameters
@@ -71,7 +71,7 @@ with program() as power_rabi:
                 demod.full(mes.rr_integW1, I),
                 demod.full(mes.rr_integW2, Q),
             )
-            wait(int(mes.wait_time // 4), stg.qubit.name)
+            wait(int(mes.wait_time // 4), mes.qubit_name)
             save(a, a_stream)
             save(I, I_stream)
             save(Q, Q_stream)
@@ -132,7 +132,7 @@ with DataSaver(db) as datasaver:
         if not update_results:  # empty dict return means no new results are available
             continue
         ####################            LIVE SAVE RESULTS         ######################
-        datasaver.update_multiple_results(update_results, save = ["I", "Q"],    group="data")
+        datasaver.update_multiple_results(update_results, save=["I", "Q"], group="data")
 
         ##########            CALCULATE RUNNING MEAN STANDARD ERROR         ############
 
@@ -151,7 +151,7 @@ with DataSaver(db) as datasaver:
 
     # to save final average and sweep variables, we extract them from "update_results"
     final_save_dict = {"Y_AVG": ys, "X": xs}
-    datasaver.add_multiple_results(final_save_dict, save = ["Y_AVG", "X"],  group="data")
+    datasaver.add_multiple_results(final_save_dict, save=["Y_AVG", "X"], group="data")
 
 
 ###############################          fin           #################################
