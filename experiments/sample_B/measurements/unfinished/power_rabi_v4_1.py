@@ -32,10 +32,10 @@ metadata = {
 }
 
 # create a namespace and convert the metadata dictionary into the parameters under this name space
-mes = SimpleNamespace(**metadata)
 
-a_start, a_stop, a_step = mes.a_start, mes.a_stop, mes.a_step
+a_start, a_stop, a_step = metadata["a_start"], metadata["a_stop"], metadata["a_step"]
 metadata["sweep_length"] = len(np.arange(a_start, a_stop + a_step / 2, a_step))
+mes = SimpleNamespace(**metadata)
 
 # Temporary solution, in version 5 it will be a measurement object whose properties are the parameters
 # The future measurement object will keep the same structure with the namep space
