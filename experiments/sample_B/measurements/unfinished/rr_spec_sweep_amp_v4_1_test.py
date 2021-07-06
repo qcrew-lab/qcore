@@ -66,9 +66,9 @@ with program() as rr_spec_amp:
     Q_stream = declare_stream()
 
     #######################        MEASUREMENT SEQUENCE        #########################
-    # with for_each_((qubit_amp, rr_amp), (mes.qubit_ampx_vec, mes.rr_ampx_vec)):
+
     with for_(n, 0, n < mes.reps, n + 1):
-        with for_each_(rr_amp, [0.01, 0.02, 0.03, 0.04]):
+        with for_each_(rr_amp, mes.rr_ampx_vec):
             with for_(f, mes.f_start, f < mes.f_stop + mes.f_step / 2, f + mes.f_step):
                 update_frequency(mes.rr_name, f)
                 play(mes.qubit_op * amp(mes.qubit_ampx), mes.qubit_name)
@@ -80,10 +80,10 @@ with program() as rr_spec_amp:
                     demod.full(mes.rr_integW1, I),
                     demod.full(mes.rr_integW2, Q),
                 )
-            wait(int(mes.wait_time // 4), mes.qubit_name)
-            save(f, f_stream)
-            save(I, I_stream)
-            save(Q, Q_stream)
+                wait(int(mes.wait_time // 4), mes.qubit_name)
+                save(f, f_stream)
+                save(I, I_stream)
+                save(Q, Q_stream)
 
     #####################        RESULT STREAM PROCESSING        #######################
 

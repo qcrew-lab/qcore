@@ -1,4 +1,4 @@
-""" Power Rabi measurement script v4.3 """
+""" Qubit Spectroscopy measurement script v4.3 """
 #############################           IMPORTS           ##############################
 from qcrew.experiments.sample_B.imports import *
 from types import SimpleNamespace
@@ -6,23 +6,26 @@ from types import SimpleNamespace
 ##########################        DATA SAVING VARIABLES       ##########################
 
 SAMPLE_NAME = "sample_B"
-EXP_NAME = "power_rabi"
+EXP_NAME = "qubit_spectroscopy"
 PROJECT_NAME = "squeezed_cat"
 DATAPATH = Path.cwd() / "data"
 
+
 #########################        MEASUREMENT PARAMETERS        #########################
+
 metadata = {
-    "reps": 500,  # number of sweep repetitions
+    "reps": 8000,  # number of sweep repetitions
     "wait_time": 75000,  # delay between reps in ns, an integer multiple of 4 >= 16
-    "a_start": -1.9,  # amplitude sweep range is set by start, stop, and step
-    "a_stop": 1.9,
-    "a_step": 0.05,
-    "qubit_op": "gaussian",  # qubit pulse name as defined in the config
+    "f_start": -80e6,  # amplitude sweep range is set by start, stop, and step
+    "f_stop": -30e6,
+    "f_step": 0.03e6,
+    "qubit_op": "CW",  # qubit pulse name as defined in the config
+    "qubit_ampx": 1.6,  # qubit pulse amplitude scale factor
     "qubit_name": stg.qubit.name,
     "rr_op": "readout",  # readout pulse name
     "rr_name": stg.rr.name,
     "rr_op_ampx": 0.0175,  # readout pulse amplitude scale factor
-    "fit_fn": "sine",  # name of the fit function
+    "fit_fn": "lorentzian",  # name of the fit function
     "rr_lo_freq": stg.rr.lo_freq,  # frequency of the local oscillator driving rr
     "rr_int_freq": stg.rr.int_freq,  # frequency played by OPX to rr
     "qubit_lo_freq": stg.qubit.lo_freq,  # frequency of local oscillator driving qubit
@@ -32,35 +35,31 @@ metadata = {
 }
 
 # create a namespace and convert the metadata dictionary into the parameters under this name space
-
-a_start, a_stop, a_step = metadata["a_start"], metadata["a_stop"], metadata["a_step"]
-metadata["sweep_length"] = len(np.arange(a_start, a_stop + a_step / 2, a_step))
+f_start, f_stop, f_step = metadata["f_start"], metadata["f_stop"], metadata["f_step"]
+metadata["sweep_length"] = len(np.arange(f_start, f_stop + f_step / 2, f_step))
 mes = SimpleNamespace(**metadata)
-
-# Temporary solution, in version 5 it will be a measurement object whose properties are the parameters
-# The future measurement object will keep the same structure with the namep space
 
 ########################        QUA PROGRAM DEFINITION        ##########################
 
-with program() as power_rabi:
+with program() as qubit_spec:
 
     #####################        QUA VARIABLE DECLARATIONS        ######################
 
     n = declare(int)  # averaging loop variable
-    a = declare(fixed)
+    f = declare(int)
     I = declare(fixed)
     Q = declare(fixed)
 
-    a_stream = declare_stream()
+    f_stream = declare_stream()
     I_stream = declare_stream()
     Q_stream = declare_stream()
 
     #######################        MEASUREMENT SEQUENCE        #########################
 
     with for_(n, 0, n < mes.reps, n + 1):
-        with for_(a, mes.a_start, a < mes.a_stop + mes.a_step / 2, a + mes.a_step):
+        with for_(f, mes.f_start, f < mes.f_stop + mes.f_step / 2, f + mes.f_step):
 
-            play(mes.qubit_op * amp(a), mes.qubit_name)
+            play(mes.qubit_op * amp(mes.qubit_ampx), mes.qubit_name)
 
             align(mes.qubit_name, mes.rr_name)
             measure(
@@ -71,14 +70,14 @@ with program() as power_rabi:
                 demod.full(mes.rr_integW2, Q),
             )
             wait(int(mes.wait_time // 4), mes.qubit_name)
-            save(a, a_stream)
+            save(f, f_stream)
             save(I, I_stream)
             save(Q, Q_stream)
 
     #####################        RESULT STREAM PROCESSING        #######################
 
     with stream_processing():
-        a_stream.buffer(mes.sweep_length).save("A")  # to save sweep variable
+        f_stream.buffer(mes.sweep_length).save("A")  # to save sweep variable
 
         I_raw = I_stream.buffer(mes.sweep_length)
         Q_raw = Q_stream.buffer(mes.sweep_length)  # to reshape result streams
@@ -95,15 +94,14 @@ with program() as power_rabi:
         (I_raw * I_raw + Q_raw * Q_raw).average().save_all("Y_SQ_RAW_AVG")
         (I_avg * I_avg + Q_avg * Q_avg).save("Y_AVG")
 
-
 #############################        RUN MEASUREMENT        ############################
 
-job = stg.qm.execute(power_rabi)
+job = stg.qm.execute(qubit_spec)
 
 #############################        INVOKE HELPERS        #############################
 # fetch helper and plot hepler
 fetcher = Fetcher(handle=job.result_handles, num_results=mes.reps)
-plotter = Plotter(title=EXP_NAME, xlabel="Amplitude scale factor")
+plotter = Plotter(title=EXP_NAME, xlabel="Qubit IF")
 stats = (None, None, None)  # to hold running stats (stderr, mean, variance * (n-1))
 
 # initialise database under dedicated folder

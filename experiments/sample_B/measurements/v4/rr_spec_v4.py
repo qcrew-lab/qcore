@@ -1,4 +1,4 @@
-from qcrew.experiments.coax_test.imports import *  #  import all objects from init file
+from qcrew.experiments.sample_B.imports import *  #  import all objects from init file
 
 reload(cfg)  # reload config before running the script
 reload(stg)  # reload stage before running the script
@@ -14,18 +14,16 @@ DATAPATH = Path.cwd() / "data"
 
 
 metadata = {
-    "reps": 3000,  # number of sweep repetitions
+    "reps": 8000,  # number of sweep repetitions
     "wait": 75000,  # delay between reps in ns, an integer multiple of 4 >= 16
     "start": -51e6,  # frequency sweep range is set by start, stop, and step
     "stop": -46e6,
     "step": 0.05e6,
     "rr_op": "readout",  # readout pulse name
     "rr_op_ampx": 0.0175,  # readout pulse amplitude scale factor
-    "fit_fn": "sine",  # name of the fit function
+    "fit_fn": "lorentzian",  # name of the fit function
     "rr_lo_freq": stg.rr.lo_freq,  # frequency of the local oscillator driving rr
     "rr_int_freq": stg.rr.int_freq,  # frequency played by OPX to rr
-    "qubit_lo_freq": stg.qubit.lo_freq,  # frequency of local oscillator driving qubit
-    "qubit_int_freq": stg.qubit.int_freq,  # frequency played by OPX to qubit
 }
 
 x_start, x_stop, x_step = metadata["start"], metadata["stop"], metadata["step"]
@@ -84,12 +82,12 @@ with program() as rr_spec:
 
 #############################        RUN MEASUREMENT        ############################
 
-job = stg.qm.execute(power_rabi)
+job = stg.qm.execute(rr_spec)
 
 #############################        INVOKE HELPERS        #############################
 
 fetcher = Fetcher(handle=job.result_handles, num_results=metadata["reps"])
-plotter = Plotter(title=EXP_NAME, xlabel="Amplitude scale factor")
+plotter = Plotter(title=EXP_NAME, xlabel="rr IF")
 stats = tuple()  # to hold variables needed to calculate std error in one pass
 db = initialise_database(
     exp_name=EXP_NAME,
