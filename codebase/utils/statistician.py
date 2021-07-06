@@ -8,11 +8,11 @@ def get_std_err(xs, ms, n, std_err=None, m=None, s=None):
     Calculate the std err
     Arguments:
     xs: raw data matrix, xs.shape[0] is the repetition dimension, while xs.shape[1] is the sweep dimension.
-    ms: averaged data array
+    ms: mean value
     n: the repetition = xs.shape[0]
     std_err: previous std err
-    m: previous m
-    s: previous s
+    m: previous mean value
+    s: previous sum of squares of differences fro mthe current mean
     """
     if std_err is None:  
         old_m, old_s = xs[0], np.zeros(xs.shape[1])  # m_1 = x_1, s_1 = 0
