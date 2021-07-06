@@ -6,14 +6,14 @@ from types import SimpleNamespace
 ##########################        DATA SAVING VARIABLES       ##########################
 
 SAMPLE_NAME = "sample_B"
-EXP_NAME = "power_rabi"
+EXP_NAME = "Power_rabi"
 PROJECT_NAME = "squeezed_cat"
 DATAPATH = Path.cwd() / "data"
 
 #########################        MEASUREMENT PARAMETERS        #########################
 metadata = {
-    "reps": 500,  # number of sweep repetitions
-    "wait_time": 75000,  # delay between reps in ns, an integer multiple of 4 >= 16
+    "reps": 50000,  # number of sweep repetitions
+    "wait_time": 300000,  # delay between reps in ns, an integer multiple of 4 >= 16
     "a_start": -1.9,  # amplitude sweep range is set by start, stop, and step
     "a_stop": 1.9,
     "a_step": 0.05,
@@ -103,7 +103,7 @@ job = stg.qm.execute(power_rabi)
 #############################        INVOKE HELPERS        #############################
 # fetch helper and plot hepler
 fetcher = Fetcher(handle=job.result_handles, num_results=mes.reps)
-plotter = Plotter(title=EXP_NAME, xlabel="Amplitude scale factor")
+plotter = Plottertest(title=EXP_NAME, xlabel="Amplitude scale factor")
 stats = (None, None, None)  # to hold running stats (stderr, mean, variance * (n-1))
 
 # initialise database under dedicated folder

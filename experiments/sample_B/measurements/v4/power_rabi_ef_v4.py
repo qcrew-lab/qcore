@@ -1,4 +1,4 @@
-""" Power Rabi measurement script v4.3 """
+""" Power Rabi of ef transition measurement script v4.1 """
 #############################           IMPORTS           ##############################
 from qcrew.experiments.sample_B.imports import *
 from types import SimpleNamespace
@@ -6,29 +6,34 @@ from types import SimpleNamespace
 ##########################        DATA SAVING VARIABLES       ##########################
 
 SAMPLE_NAME = "sample_B"
-EXP_NAME = "power_rabi"
+EXP_NAME = "power_rabi_ef"
 PROJECT_NAME = "squeezed_cat"
 DATAPATH = Path.cwd() / "data"
 
 #########################        MEASUREMENT PARAMETERS        #########################
 metadata = {
-    "reps": 500,  # number of sweep repetitions
-    "wait_time": 75000,  # delay between reps in ns, an integer multiple of 4 >= 16
+    "reps": 50000,  # number of sweep repetitions
+    "wait_time": 300000,  # delay between reps in ns, an integer multiple of 4 >= 16
     "a_start": -1.9,  # amplitude sweep range is set by start, stop, and step
     "a_stop": 1.9,
     "a_step": 0.05,
-    "qubit_op": "gaussian",  # qubit pulse name as defined in the config
-    "qubit_name": stg.qubit.name,
     "rr_op": "readout",  # readout pulse name
     "rr_name": stg.rr.name,
     "rr_op_ampx": 0.0175,  # readout pulse amplitude scale factor
     "fit_fn": "sine",  # name of the fit function
     "rr_lo_freq": stg.rr.lo_freq,  # frequency of the local oscillator driving rr
     "rr_int_freq": stg.rr.int_freq,  # frequency played by OPX to rr
-    "qubit_lo_freq": stg.qubit.lo_freq,  # frequency of local oscillator driving qubit
-    "qubit_int_freq": stg.qubit.int_freq,  # frequency played by OPX to qubit
     "rr_integW1": "integW1",
     "rr_integW2": "integW2",
+    "qubit_ge_op": "pi_drag",  # qubit pulse name as defined in the config
+    "qubit_ge_ampx": 1,
+    "qubit_ef_op": "gaussian",  # qubit pulse name as defined in the config
+    "qubit_ef_ampx": 1,
+    "qubit_name": stg.qubit.name,
+    "qubit_lo_freq": stg.qubit.lo_freq,  # frequency of local oscillator driving qubit
+    "qubit_ge_int_freq": stg.qubit.int_freq,  # frequency played by OPX to qubit
+    "qubit_ef_int_freq": -100e6
+
 }
 
 # create a namespace and convert the metadata dictionary into the parameters under this name space
@@ -59,8 +64,18 @@ with program() as power_rabi:
 
     with for_(n, 0, n < mes.reps, n + 1):
         with for_(a, mes.a_start, a < mes.a_stop + mes.a_step / 2, a + mes.a_step):
-
-            play(mes.qubit_op * amp(a), mes.qubit_name)
+            
+            # g to e pulse
+            update_frequency(mes.qubit_name, mes.qubit_ge_int_freq)
+            play(mes.qubit_ge_op * amp(mes.qubit_ge_ampx), mes.qubit_name)
+            
+            # e to f proble pulse
+            update_frequency(mes.qubit_name, mes.qubit_ef_int_freq)
+            play(mes.qubit_ef_op * amp(a), mes.qubit_name)
+            
+            # e to g pulse
+            update_frequency(mes.qubit_name, mes.qubit_ge_int_freq)
+            play(mes.qubit_ge_op * amp(mes.qubit_ge_ampx), mes.qubit_name)
 
             align(mes.qubit_name, mes.rr_name)
             measure(

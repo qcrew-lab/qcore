@@ -1,4 +1,4 @@
-""" Qubit Spectroscopy measurement script v4.1 """
+""" T2 measurement script v4.1 """
 #############################           IMPORTS           ##############################
 from qcrew.experiments.sample_B.imports import *
 from types import SimpleNamespace
@@ -6,61 +6,62 @@ from types import SimpleNamespace
 ##########################        DATA SAVING VARIABLES       ##########################
 
 SAMPLE_NAME = "sample_B"
-EXP_NAME = "qubit_spectroscopy"
+EXP_NAME = "T2"
 PROJECT_NAME = "squeezed_cat"
 DATAPATH = Path.cwd() / "data"
 
-
 #########################        MEASUREMENT PARAMETERS        #########################
-
 metadata = {
-    "reps": 8000,  # number of sweep repetitions
-    "wait_time": 75000,  # delay between reps in ns, an integer multiple of 4 >= 16
-    "f_start": -50e6,  # amplitude sweep range is set by start, stop, and step
-    "f_stop": -45e6,
-    "f_step": 0.02e6,
-    "qubit_op": "CW",  # qubit pulse name as defined in the config
-    "qubit_ampx": 1.6,  # qubit pulse amplitude scale factor
-    "qubit_name": stg.qubit.name,
+    "reps": 50000,  # number of sweep repetitions
+    "wait_time": 300000,  # delay between reps in ns, an integer multiple of 4 >= 16
+    "t_start": 0,  # amplitude sweep range is set by start, stop, and step
+    "t_stop": 50000,
+    "t_step": 200,
     "rr_op": "readout",  # readout pulse name
     "rr_name": stg.rr.name,
     "rr_op_ampx": 0.0175,  # readout pulse amplitude scale factor
-    "fit_fn": "lorentzian",  # name of the fit function
+    "rr_integW1": "integW1",
+    "rr_integW2": "integW2",
+    "fit_fn": "sine",  # name of the fit function
     "rr_lo_freq": stg.rr.lo_freq,  # frequency of the local oscillator driving rr
     "rr_int_freq": stg.rr.int_freq,  # frequency played by OPX to rr
     "qubit_lo_freq": stg.qubit.lo_freq,  # frequency of local oscillator driving qubit
     "qubit_int_freq": stg.qubit.int_freq,  # frequency played by OPX to qubit
-    "rr_integW1": "integW1",
-    "rr_integW2": "integW2",
+    "qubit_op": "pi2_drag",  # qubit pulse name as defined in the config
+    "qubit_op_ampx":1 ,
+    "qubit_name": stg.qubit.name,
 }
 
 # create a namespace and convert the metadata dictionary into the parameters under this name space
-f_start, f_stop, f_step = metadata["f_start"], metadata["f_stop"], metadata["f_step"]
-metadata["sweep_length"] = len(np.arange(f_start, f_stop + f_step / 2, f_step))
+
+t_start, t_stop, t_step = metadata["t_start"], metadata["t_stop"], metadata["t_step"]
+metadata["sweep_length"] = len(np.arange(t_start, t_stop + t_step / 2, t_step))
 mes = SimpleNamespace(**metadata)
+
+# Temporary solution, in version 5 it will be a measurement object whose properties are the parameters
+# The future measurement object will keep the same structure with the namep space
 
 ########################        QUA PROGRAM DEFINITION        ##########################
 
-with program() as qubit_spec:
+with program() as t2:
 
-    #####################        QUA VARIABLE DECLARATIONS        ######################
-
-    n = declare(int)  # averaging loop variable
-    f = declare(int)
+    n = declare(int)
+    t = declare(int)
     I = declare(fixed)
     Q = declare(fixed)
 
-    f_stream = declare_stream()
+    t_stream = declare_stream()
     I_stream = declare_stream()
     Q_stream = declare_stream()
 
     #######################        MEASUREMENT SEQUENCE        #########################
 
     with for_(n, 0, n < mes.reps, n + 1):
-        with for_(f, mes.f_start, f < mes.f_stop + mes.f_step / 2, f + mes.f_step):
+        with for_(t, mes.t_start, t < mes.t_stop + mes.t_step/2, t + mes.t_step):  
 
-            play(mes.qubit_op * amp(mes.qubit_ampx), mes.qubit_name)
-
+            play(mes.qubit_op * amp(mes.qubit_op_ampx), mes.qubit_name)
+            wait( int(t // 4), mes.qubit_name)
+            play(mes.qubit_op * amp(mes.qubit_op_ampx), mes.qubit_name)
             align(mes.qubit_name, mes.rr_name)
             measure(
                 mes.rr_op * amp(mes.rr_op_ampx),
@@ -70,14 +71,15 @@ with program() as qubit_spec:
                 demod.full(mes.rr_integW2, Q),
             )
             wait(int(mes.wait_time // 4), mes.qubit_name)
-            save(f, f_stream)
+            save(t, t_stream)
             save(I, I_stream)
             save(Q, Q_stream)
+
 
     #####################        RESULT STREAM PROCESSING        #######################
 
     with stream_processing():
-        f_stream.buffer(mes.sweep_length).save("F")  # to save sweep variable
+        t_stream.buffer(mes.sweep_length).save("T")  # to save sweep variable
 
         I_raw = I_stream.buffer(mes.sweep_length)
         Q_raw = Q_stream.buffer(mes.sweep_length)  # to reshape result streams
@@ -94,14 +96,14 @@ with program() as qubit_spec:
         (I_raw * I_raw + Q_raw * Q_raw).average().save_all("Y_SQ_RAW_AVG")
         (I_avg * I_avg + Q_avg * Q_avg).save("Y_AVG")
 
+
 #############################        RUN MEASUREMENT        ############################
 
-job = stg.qm.execute(qubit_spec)
-
-#############################        INVOKE HELPERS        #############################
+job = stg.qm.execute(t2)
+############################        INVOKE HELPERS        #############################
 # fetch helper and plot hepler
 fetcher = Fetcher(handle=job.result_handles, num_results=mes.reps)
-plotter = Plotter(title=EXP_NAME, xlabel="Qubit IF")
+plotter = Plotter(title=EXP_NAME, xlabel="Time (ns) ")
 stats = (None, None, None)  # to hold running stats (stderr, mean, variance * (n-1))
 
 # initialise database under dedicated folder
@@ -140,7 +142,7 @@ with DataSaver(db) as datasaver:
         #################            LIVE PLOT AVAILABLE RESULTS         ###############
 
         ys = np.sqrt(update_results["Y_AVG"])  # latest batch of average signal
-        xs = update_results["F"]
+        xs = update_results["A"]
         plotter.live_plot(xs, ys, num_so_far, fit_fn=mes.fit_fn, err=stats[0])
         time.sleep(1)  # prevent over-fetching, over-saving, ulta-fast live plotting
 

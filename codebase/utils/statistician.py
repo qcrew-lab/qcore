@@ -4,7 +4,17 @@ import numpy as np
 # Python implementation of Welford's online algorithm
 # Inspired by http://www.johndcook.com/standard_deviation.html
 def get_std_err(xs, ms, n, std_err=None, m=None, s=None):
-    if std_err is None:  # we are calculating std err for the first time
+    """
+    Calculate the std err
+    Arguments:
+    xs: raw data matrix, xs.shape[0] is the repetition dimension, while xs.shape[1] is the sweep dimension.
+    ms: averaged data array
+    n: the repetition = xs.shape[0]
+    std_err: previous std err
+    m: previous m
+    s: previous s
+    """
+    if std_err is None:  
         old_m, old_s = xs[0], np.zeros(xs.shape[1])  # m_1 = x_1, s_1 = 0
         xs, ms = xs[1:], ms[1:]  # safe to ignore first result array
     else:
