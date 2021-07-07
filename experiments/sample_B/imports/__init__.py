@@ -6,8 +6,8 @@ import time
 import sys
 from datetime import datetime, date
 from pathlib import Path
-from importlib import reload
 from importlib.util import resolve_name
+from importlib import reload
 
 # qcrew modules
 from qcrew.codebase.analysis.plot import plot_fit
@@ -23,8 +23,7 @@ from qcrew.codebase.analysis import fit
 from qm.qua import *
 
 # instruments
-stage_module_path = resolve_name(".stage_test", "qcrew.experiments.sample_B.imports")
+stage_module_path = resolve_name(".stage", "qcrew.experiments.sample_B.imports")
 if stage_module_path not in sys.modules:
-    from qcrew.experiments.sample_B.imports import stage as stg
-else:
-    reload(stg)
+    import qcrew.experiments.sample_B.imports.stage as stg
+

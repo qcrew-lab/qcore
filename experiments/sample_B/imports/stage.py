@@ -15,19 +15,20 @@ config_module_path = resolve_name(
     ".configuration", "qcrew.experiments.sample_B.imports"
 )
 if config_module_path not in sys.modules:
-    from qcrew.experiments.sample_B.imports import configuration
+    import qcrew.experiments.sample_B.imports.configuration as cfg
 else:
-    reload(configuration)
+    reload(cfg)
+
 
 ########################################################################################
 ########################################################################################
-config = configuration.config
-qubit_IF = configuration.qubit_IF
-qubit_LO = configuration.qubit_LO
-rr_IF = configuration.rr_IF
-rr_LO = configuration.rr_LO
-qubit_mixer_offsets = configuration.qubit_mixer_offsets
-rr_mixer_offsets = configuration.rr_mixer_offsets
+config = cfg.config
+qubit_IF = cfg.qubit_IF
+qubit_LO = cfg.qubit_LO
+rr_IF = cfg.rr_IF
+rr_LO = cfg.rr_LO
+qubit_mixer_offsets = cfg.qubit_mixer_offsets
+rr_mixer_offsets = cfg.rr_mixer_offsets
 
 ########################################################################################
 ########################################################################################

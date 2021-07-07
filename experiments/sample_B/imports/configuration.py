@@ -38,7 +38,7 @@ def IQ_imbalance(gain: float, phase: float) -> list[float]:
 ########################################################################################
 # readout pulse
 rr_time_of_flight = 1600  # in ns
-rr_LO = int(9.453e9)
+rr_LO =  int(9.453e9)
 rr_IF = int(-49.4e6)
 
 # qubit pulse

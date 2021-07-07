@@ -3,6 +3,15 @@
 from qcrew.experiments.sample_B.imports import *
 from types import SimpleNamespace
 
+reload(stg)
+# instruments
+# stage_module_path = resolve_name(".stage", "qcrew.experiments.sample_B.imports")
+# if stage_module_path not in sys.modules:
+#     import qcrew.experiments.sample_B.imports.stage as stg
+# else:
+#     reload(stg)
+
+
 ##########################        DATA SAVING VARIABLES       ##########################
 
 SAMPLE_NAME = "sample_B"
@@ -12,7 +21,7 @@ DATAPATH = Path.cwd() / "data"
 
 #########################        MEASUREMENT PARAMETERS        #########################
 metadata = {
-    "reps": 50000,  # number of sweep repetitions
+    "reps": 500,  # number of sweep repetitions
     "wait_time": 300000,  # delay between reps in ns, an integer multiple of 4 >= 16
     "a_start": -1.9,  # amplitude sweep range is set by start, stop, and step
     "a_stop": 1.9,
