@@ -22,8 +22,3 @@ from qcrew.codebase.analysis import fit
 # qua modules
 from qm.qua import *
 
-# instruments
-stage_module_path = resolve_name(".stage", "qcrew.experiments.sample_B.imports")
-if stage_module_path not in sys.modules:
-    import qcrew.experiments.sample_B.imports.stage as stg
-
