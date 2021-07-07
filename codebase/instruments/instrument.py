@@ -31,6 +31,8 @@ class Instrument(Yamlable):
             name (str): name of this instrument.
         """
         super().__init__(name=name)
+        
+    
 
     @property  # parameters info getter
     @abstractmethod
@@ -137,17 +139,35 @@ class MetaInstrument(Instrument):
             self._parameters[param_name] = param_value
 
 class VisaInstrument(PhysicalInstrument):
-    def __init__(self, **kwargs):
+    def __init__(self, name: str, uid: str, **kwargs):
         
+        self.uid = uid
         self.ins = None
         
-        super(VisaInstrument, self).__init__()
+        super().__init__(name=name, uid=uid)
         
-    def _connect(self, uid: str):
-        if uid not in pyvisa.ResourceManager().list_resources():
+    def _create_yaml_map(self):
+        pass
+        
+    def parameters(self):
+        pass
+        
+    def _connect(self):
+        if self.uid not in pyvisa.ResourceManager().list_resources():
             raise Exception('Address not in connected resources')
         else:
-            self.ins = pyvisa.open_resource(uid)
+            self.ins = pyvisa.ResourceManager().open_resource(self.uid)
+            
+    def _initialize(self):
+        """
+        Set the initial configuration of this instrument.
+        """
+        pass
+    
+    def disconnect(self):
+        if self.ins is not None:
+            self.ins.close()
+        self.ins = None
     
     def check_ins(self):
         if self.ins is None:
@@ -160,8 +180,5 @@ class VisaInstrument(PhysicalInstrument):
     def ask(self, cmd):
         self.write(cmd)
         return self.ins.read()
-    
-    def disconnect(self):
-        if self.ins is not None:
-            self.ins.close()
-        self.ins = None
+
+
