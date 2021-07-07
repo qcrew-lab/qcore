@@ -3,7 +3,8 @@ This module defines base classes for encapsulating instruments in qcrew's lab.
 """
 from abc import abstractmethod
 
-from qcrew.codebase.utils.yamlizer import Yamlable
+from qcore.codebase.utils.yamlizer import Yamlable
+import pyvisa
 
 
 class Instrument(Yamlable):
@@ -134,3 +135,33 @@ class MetaInstrument(Instrument):
             param_value = parameters[param_name]
             setattr(self, param_name, param_value)
             self._parameters[param_name] = param_value
+
+class VisaInstrument(PhysicalInstrument):
+    def __init__(self, **kwargs):
+        
+        self.ins = None
+        
+        super(VisaInstrument, self).__init__()
+        
+    def _connect(self, uid: str):
+        if uid not in pyvisa.ResourceManager().list_resources():
+            raise Exception('Address not in connected resources')
+        else:
+            self.ins = pyvisa.open_resource(uid)
+    
+    def check_ins(self):
+        if self.ins is None:
+            raise Exception('instrument not open')
+        
+    def write(self, cmd):
+        self.check_ins()
+        self.ins.write(cmd)
+    
+    def ask(self, cmd):
+        self.write(cmd)
+        return self.ins.read()
+    
+    def disconnect(self):
+        if self.ins is not None:
+            self.ins.close()
+        self.ins = None
