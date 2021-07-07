@@ -112,7 +112,7 @@ job = stg.qm.execute(power_rabi)
 #############################        INVOKE HELPERS        #############################
 # fetch helper and plot hepler
 fetcher = Fetcher(handle=job.result_handles, num_results=mes.reps)
-plotter = Plottertest(title=EXP_NAME, xlabel="Amplitude scale factor")
+plotter = Plotter(title=EXP_NAME, xlabel="Amplitude scale factor")
 stats = (None, None, None)  # to hold running stats (stderr, mean, variance * (n-1))
 
 # initialise database under dedicated folder
