@@ -46,6 +46,16 @@ def get_gaussian_waveforms(
     return i_wf, q_wf
 
 
+#### Yvonne added this for a quick test, will remove later.
+def get_gaussian_waveforms_test(
+    ampx: float, drag: float, sigma: float, chop: int
+) -> tuple[np.ndarray]:
+    ts = np.linspace(-chop / 2 * sigma, chop / 2 * sigma, chop * sigma)
+    i_wf = BASE_AMP * ampx * np.exp(-(ts ** 2) / (2.0 * sigma ** 2))
+    q_wf = drag * (0.5 / sigma ** 2) * (-ts) * i_wf
+    return i_wf, q_wf
+
+
 ########################################################################################
 ##############################           ELEMENTS         ##############################
 ########################################################################################
@@ -64,10 +74,10 @@ rr_IF = -50e6
 rr_time_of_flight = 444  # must be integer multiple of 4 >= 180
 
 qubit_mixer_offsets = {  # NOTE: copy paste results of mixer tuning here
-    "I": 0.007179423904744908,
-    "Q": -0.006429361237678677,
-    "G": -0.18545837402343757,
-    "P": 0.09413375854492195,
+    "I": 0.0,#0.007179423904744908,
+    "Q": 0.0,#-0.006429361237678677,
+    "G": 0.0,#-0.18545837402343757,
+    "P": 0.0,#0.09413375854492195,
 }
 rr_mixer_offsets = {  # NOTE: copy paste results of mixer tuning here
     "I": -0.010745931230485443,
@@ -95,12 +105,13 @@ saturation_pulse_amp = BASE_AMP  # must be float in the interval (-0.5, 0.5)
 # set drag = 0.0, if you want no drag correction
 # gauss_I_wf_samples, gauss_Q_wf_samples = get_gaussian_waveforms(1.0, 0.0, 200, 4)
 
+
 # (maximum, sigma, multiple_of_sigma)
 gaussian_pulse_wf_I_samples = gaussian_fn(0.2, 200, 4)
 gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
 
 # (maximum, drag, sigma, multiple_of_sigma)
-gaussian_derivative_wf_samples = gaussian_derivative_fn(0.2 * 1.9164, 37.9, 200, 4)
+gaussian_derivative_wf_samples = gaussian_derivative_fn(0.2, 1, 200, 4)
 gaussian_drag_pulse_len = len(gaussian_derivative_wf_samples)
 
 ################################### EXCLUSIVE PULSES ###################################
@@ -111,16 +122,19 @@ sq_pi2_len = 292  # must be an integer multiple of 4 >= 16
 sq_pi_pi2_amp = 0.3444  # must be float in the interval (-0.5, 0.5)
 
 # qubit gaussian pi pulse
-gauss_pi_amp = 0.2 * 1.9164
+gauss_pi_amp = 0.2  # * 1.9164
 gauss_pi_sigma = 175
 gauss_pi_chop = 4
 gauss_pi_samples = gaussian_fn(gauss_pi_amp, gauss_pi_sigma, gauss_pi_chop)
 gauss_pi_len = len(gauss_pi_samples)
 # DRAG correction
-drag_coeff = 13.27
+drag_coeff = 13
 gauss_pi_drag_samples = gaussian_derivative_fn(
     gauss_pi_amp, drag_coeff, gauss_pi_sigma, gauss_pi_chop
 )
+
+test_gauss_I, test_gauss_Q = get_gaussian_waveforms_test(1 * 1.5, 20, 250, 4)
+test_gauss_len = len(test_gauss_I)
 
 # qubit gaussian pi2 pulse
 gauss_pi2_samples = gaussian_fn(0.2 * 1.877, 90, 4)  # (amp, sigma, multiple_sigma)
@@ -173,6 +187,7 @@ config = {
                 "gaussian": "gaussian_pulse",
                 "drag": "gaussian_drag_pulse",
                 "saturation": "saturation_pulse",
+                "test_pi": "test_pi",
             },
         },
         "rr": {
@@ -203,6 +218,12 @@ config = {
             "operation": "control",
             "length": gauss_pi_len,
             "waveforms": {"I": "gauss_pi_wf", "Q": "zero_wf"},
+        },
+        ### test
+        "test_pi": {
+            "operation": "control",
+            "length": test_gauss_len,
+            "waveforms": {"I": "gauss_I", "Q": "gauss_Q"},
         },
         "pi_drag": {
             "operation": "control",
@@ -290,6 +311,15 @@ config = {
         "sq_pi_pi2_wf": {
             "type": "constant",
             "sample": sq_pi_pi2_amp,
+        },
+        ###### test
+        "gauss_I": {
+            "type": "arbitrary",
+            "samples": test_gauss_I,
+        },
+        "gauss_Q": {
+            "type": "arbitrary",
+            "samples": test_gauss_Q,
         },
     },
     "digital_waveforms": {"ON": {"samples": [(1, 0)]}},
