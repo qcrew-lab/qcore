@@ -34,22 +34,7 @@ class PowerRabi(Experiment1D):
 
 if __name__ == "__main__":
 
-    #############        DATA SAVING PARAMETERS       ################
-
-    save_params = {
-        "SAMPLE_NAME": "coax_a",
-        "EXP_NAME": "power_rabi",
-        "PROJECT_FOLDER_NAME": "coax_test",
-        "DATAPATH": Path.cwd() / "data",
-    }
-
-    ##############        PLOTTING PARAMETERS       #################
-
-    plot_params = {
-        "xlabel": "Amplitude scale factor",
-    }
-
-    #############        EXPERIMENT PARAMETERS       ################
+    #############        SETTING EXPERIMENT      ################
 
     exp_params = {
         "reps": 20000,  # number of sweep repetitions A
@@ -69,6 +54,73 @@ if __name__ == "__main__":
         "integW2": "integW2",  # Q integration weight A
     }
 
-    #################        RUN MEASUREMENT        ##################
+    power_rabi = PowerRabi(exp_params).QUA_sequence()
 
-    PowerRabi(exp_params, save_params).execute()
+    ###################        RUN MEASUREMENT        ############################
+
+    job = stg.qm.execute(power_rabi)
+
+    ###################        INVOKE HELPERS        #############################
+
+    fetcher = Fetcher(handle=job.result_handles, num_results=metadata["reps"])
+    plotter = Plotter(title=EXP_NAME, xlabel="Amplitude scale factor")
+    stats = (None, None, None)  # to hold running stats (stderr, mean, variance * (n-1))
+    db = initialise_database(
+        exp_name=EXP_NAME,
+        sample_name=SAMPLE_NAME,
+        project_name=PROJECT_FOLDER_NAME,
+        path=DATAPATH,
+        timesubdir=False,
+        timefilename=True,
+    )
+
+    ###################        LIVE POST-PROCESSING LOOP        ##################
+
+    with DataSaver(db) as datasaver:
+
+        ############        SAVE MEASUREMENT RUN METADATA       ####################
+
+        datasaver.add_metadata(metadata)
+
+        while fetcher.is_fetching:  # while the fetcher is not done fetching all results
+
+            ###########            FETCH PARTIAL RESULTS         ##################
+
+            partial_results = fetcher.fetch()  # key = tag, value = partial data
+            num_results = fetcher.count  # get number of results fetched so far
+            if (
+                not partial_results
+            ):  # empty dict return means no new results are available
+                continue
+            ##############            LIVE SAVE RESULTS         ######################
+
+            # to only live save raw "I" and "Q" data, we extract them from "partial_results"
+            live_save_dict = {"I": partial_results["I"], "Q": partial_results["Q"]}
+            datasaver.update_multiple_results(live_save_dict, group="data")
+
+            ######            CALCULATE RUNNING MEAN STANDARD ERROR         ############
+
+            ys_raw = np.sqrt(partial_results["Y_SQ_RAW"])
+            ys_raw_avg = np.sqrt(partial_results["Y_SQ_RAW_AVG"])
+            stats = get_std_err(ys_raw, ys_raw_avg, num_results, *stats)
+
+            ###########            LIVE PLOT AVAILABLE RESULTS         ###############
+
+            ys = np.sqrt(partial_results["Y_AVG"])  # latest batch of average signal
+            xs = partial_results["X"]
+            plotter.live_plot(
+                xs, ys, num_results, fit_fn=metadata["fit_fn"], err=stats[0]
+            )
+            time.sleep(1)  # prevent over-fetching, over-saving, ulta-fast live plotting
+
+        ###################         SAVE REMAINING DATA         ########################
+
+        # to save final average and sweep variables, we extract them from
+        # "partial_results"
+        final_save_dict = {"Y_AVG": ys, "X": xs}
+        datasaver.add_multiple_results(final_save_dict, group="data")
+        # NOTE (OPTIONAL) here, we can also save the final plot.
+
+    #########################          fin           #################################
+
+    print(job.execution_report())
