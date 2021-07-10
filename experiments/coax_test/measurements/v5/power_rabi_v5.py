@@ -17,6 +17,9 @@ class PowerRabi(Experiment1D):
         super().__init__(exp_params)
 
     def QUA_pulse_sequence(self):
+        """
+        Defines pulse sequence to be played inside the experiment loop
+        """
 
         play(self.qubit_op * amp(x), stg.qubit.name)
         align(stg.qubit.name, stg.rr.name)
@@ -54,7 +57,8 @@ if __name__ == "__main__":
         "integW2": "integW2",  # Q integration weight A
     }
 
-    power_rabi = PowerRabi(exp_params).QUA_sequence()
+    experiment = PowerRabi(exp_params)
+    power_rabi = experiment.QUA_sequence()
 
     ###################        RUN MEASUREMENT        ############################
 
@@ -62,7 +66,7 @@ if __name__ == "__main__":
 
     ###################        INVOKE HELPERS        #############################
 
-    fetcher = Fetcher(handle=job.result_handles, num_results=metadata["reps"])
+    fetcher = Fetcher(handle=job.result_handles, num_results=experiment.reps)
     plotter = Plotter(title=EXP_NAME, xlabel="Amplitude scale factor")
     stats = (None, None, None)  # to hold running stats (stderr, mean, variance * (n-1))
     db = initialise_database(
@@ -80,7 +84,7 @@ if __name__ == "__main__":
 
         ############        SAVE MEASUREMENT RUN METADATA       ####################
 
-        datasaver.add_metadata(metadata)
+        datasaver.add_metadata(exp_params)
 
         while fetcher.is_fetching:  # while the fetcher is not done fetching all results
 
@@ -95,21 +99,26 @@ if __name__ == "__main__":
             ##############            LIVE SAVE RESULTS         ######################
 
             # to only live save raw "I" and "Q" data, we extract them from "partial_results"
-            live_save_dict = {"I": partial_results["I"], "Q": partial_results["Q"]}
+            live_save_dict = {
+                "I": partial_results[experiment.I_tag],
+                "Q": partial_results[experiment.Q_tag],
+            }
             datasaver.update_multiple_results(live_save_dict, group="data")
 
             ######            CALCULATE RUNNING MEAN STANDARD ERROR         ############
 
-            ys_raw = np.sqrt(partial_results["Y_SQ_RAW"])
-            ys_raw_avg = np.sqrt(partial_results["Y_SQ_RAW_AVG"])
+            ys_raw = np.sqrt(partial_results[experiment.Y_SQ_RAW_tag])
+            ys_raw_avg = np.sqrt(partial_results[experiment.Y_SQ_RAW_AVG_tag])
             stats = get_std_err(ys_raw, ys_raw_avg, num_results, *stats)
 
             ###########            LIVE PLOT AVAILABLE RESULTS         ###############
 
-            ys = np.sqrt(partial_results["Y_AVG"])  # latest batch of average signal
-            xs = partial_results["X"]
+            ys = np.sqrt(
+                partial_results[experiment.Y_AVG_tag]
+            )  # latest batch of avg signal
+            xs = partial_results[experiment.X_tag]
             plotter.live_plot(
-                xs, ys, num_results, fit_fn=metadata["fit_fn"], err=stats[0]
+                xs, ys, num_results, fit_fn=experiment.fit_fn, err=stats[0]
             )
             time.sleep(1)  # prevent over-fetching, over-saving, ulta-fast live plotting
 
