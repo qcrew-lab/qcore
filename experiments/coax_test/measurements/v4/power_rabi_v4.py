@@ -20,8 +20,8 @@ metadata = {
     "wait": 50000,  # delay between reps in ns, an integer multiple of 4 >= 16
     "start": -1.9,  # amplitude sweep range is set by start, stop, and step
     "stop": 1.9,
-    "step": 0.05,
-    "qubit_op": "gaussian",  # qubit pulse name as defined in the config
+    "step": 0.1,
+    "qubit_op": "pi",  # qubit pulse name as defined in the config
     "rr_op": "readout",  # readout pulse name
     "rr_op_ampx": 0.2,  # readout pulse amplitude scale factor
     "fit_fn": "sine",  # name of the fit function
