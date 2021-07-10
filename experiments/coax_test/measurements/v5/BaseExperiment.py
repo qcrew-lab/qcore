@@ -13,15 +13,6 @@ class BaseExperiment:
 
     def __init__(self, exp_params):
 
-        ### All of the lines below can be substituted by the code excerpt below.
-        ### I don't know which is best, conciseness or clarity.
-        """
-        # Unpack dictionaries as attributes
-        all_params = exp_params
-        for key in all_params:
-            setattr(self, key, all_params[key])
-        """
-
         # Experiment loop variables
         self.reps = exp_params["reps"]
         self.wait_time = exp_params["wait_time"]
