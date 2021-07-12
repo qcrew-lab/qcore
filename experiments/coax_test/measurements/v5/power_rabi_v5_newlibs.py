@@ -6,7 +6,7 @@ also defines how the information is retrieved from result handles.
 """
 # --------------------------------- Imports ------------------------------------
 # Retrieves all necessary imports and initializes QM
-from qcrew.experiments.coax_test.measurements.v5.BaseExperiment import *
+from qcrew.experiments.coax_test.measurements.v5.BaseExperiment_newlibs import *
 
 
 # ---------------------------------- Class -------------------------------------
@@ -31,10 +31,23 @@ class PowerRabi(Experiment1D):
         Defines pulse sequence to be played inside the experiment loop
         """
 
-        self.qubit.play(self.qubit_op, x)
+        self.qubit.play(self.qubit_op, self.x)
         align(self.qubit.name, self.rr.name)
         self.rr.measure(self.readout_op)  # This should account for intW
-        wait(int(self.wait_time // 4), self.qubit.name)
+        wait(int(self.wait // 4), self.qubit.name)
+
+        """
+        play("pi" * amp(self.x), "qubit")
+        align("qubit", "rr")
+        measure(
+            "readout" * amp(0.2),
+            "rr",
+            None,
+            demod.full("integW1", self.I),
+            demod.full("integW2", self.Q),
+        )
+        wait(int(32000 // 4), "qubit")
+        """
 
 
 # -------------------------------- Execution -----------------------------------
@@ -49,7 +62,7 @@ if __name__ == "__main__":
 
     exp_params = {
         "reps": 20000,  # number of sweep repetitions
-        "wait": 50000,  # delay between reps in ns, an integer multiple of 4 >= 16
+        "wait": 32000,  # delay between reps in ns, an integer multiple of 4 >= 16
         "mode_list": [qubit, rr],  # Modes to be used in the exp. (order matters)
         "qubit_op": "pi",  # Operations to be used in the exp.
         "readout_op": "readout",
@@ -58,6 +71,11 @@ if __name__ == "__main__":
         "x_step": 0.1,
         "fit_fn": "sine",  # name eof the fit function
     }
+
+    SAMPLE_NAME = "coax_a"
+    EXP_NAME = "power_rabi"
+    PROJECT_FOLDER_NAME = "coax_test"
+    DATAPATH = Path.cwd() / "data"
 
     experiment = PowerRabi(exp_params)
     power_rabi = experiment.QUA_sequence()
@@ -99,7 +117,7 @@ if __name__ == "__main__":
             ):  # empty dict return means no new results are available
                 continue
             ##############            LIVE SAVE RESULTS         ######################
-
+            print(type(partial_results))
             # to only live save raw "I" and "Q" data, we extract them from "partial_results"
             live_save_dict = {
                 "I": partial_results[experiment.I_tag],
