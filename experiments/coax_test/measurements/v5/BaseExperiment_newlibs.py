@@ -15,10 +15,10 @@ class BaseExperiment:
 
         # Experiment loop variables
         self.reps = exp_params["reps"]
-        self.wait_time = exp_params["wait_time"]
+        self.wait = exp_params["wait"]
 
         # List of modes to be used in the experiment. The base class does not
-        # differentiate between readout and control modes.
+        # differentiate the type of each mode.
         self.mode_list = exp_params["mode_list"]
 
     @abstractmethod
@@ -60,41 +60,64 @@ class Experiment1D(BaseExperiment):
         """
         pass
 
+    def QUA_sequence(self):
+        """
+        Method that returns the QUA sequence to be executed in the quantum machine.
+        """
+
+        with program() as qua_sequence:
+
+            # Initial variable and stream declarations
+            self.QUA_variable_declaration()
+            self.QUA_stream_declaration()
+
+            # Experiment loop
+            with for_(self.n, 0, self.n < self.reps, self.n + 1):
+                with for_(
+                    self.x, self.x_start, self.x < self.x_stop, self.x + self.x_step
+                ):
+                    self.QUA_pulse_sequence()
+                    self.QUA_save_results_to_stream()
+
+            self.QUA_stream_processing()
+
+        return qua_sequence
+
     def QUA_variable_declaration(self):
         """
-        Macro that calls QUA variable declaration statements. 1D sweeps are concerned
-        only with a x sweep variable and I, Q results. Note that variables and streams
-        need to be explicitly returned to the QUA function to be in scope
+        Macro that calls QUA variable declaration statements. Variables must be defined
+        as attributes to be accessed in other methods.
         """
-        n = declare(int)  # averaging loop variable
-        x = declare(fixed)  # sweep variable "x"
-        x_stream = declare_stream()  # to save "x"
-        I = declare(fixed)  # result variable "I"
-        I_stream = declare_stream()  # to save "I"
-        Q = declare(fixed)  # result variable "Q"
-        Q_stream = declare_stream()  # to save "Q"
+        self.n = declare(int)  # averaging loop variable
+        self.x = declare(fixed)  # sweep variable "x"
+        self.I = declare(fixed)  # result variable "I"
+        self.Q = declare(fixed)  # result variable "Q"
 
-        return n, x, x_stream, I, I_stream, Q, Q_stream
+    def QUA_stream_declaration(self):
+        """
+        Macro that calls QUA stream declaration statements. Streams must be defined
+        as attributes to be accessed in other methods.
+        """
+        self.x_stream = declare_stream()  # to save "x"
+        self.I_stream = declare_stream()  # to save "I"
+        self.Q_stream = declare_stream()  # to save "Q"
 
     def QUA_save_results_to_stream(self):
         """
-        Macro that calls QUA save statements. QUA variables x, I, Q and respective
-        streams are defined in method QUA_variable_declaration
+        Macro that calls QUA save statements.
         """
-
-        save(x, x_stream)
-        save(I, I_stream)
-        save(Q, Q_stream)
+        save(self.x, self.x_stream)
+        save(self.I, self.I_stream)
+        save(self.Q, self.Q_stream)
 
     def QUA_stream_processing(self):
         """
         Macro that calls QUA save statements. QUA variables x, I, Q and respective
         streams are defined in method QUA_variable_declaration
         """
-        # Try making an attribute of some sort
         with stream_processing():
-            I_raw = I_stream.buffer(self.x_sweep_len)
-            Q_raw = Q_stream.buffer(self.x_sweep_len)  # to reshape result streams
+            I_raw = self.I_stream.buffer(self.x_sweep_len)
+            Q_raw = self.Q_stream.buffer(self.x_sweep_len)  # to reshape result streams
             I_avg = I_raw.average()
             Q_avg = Q_raw.average()  # to get running averages
 
@@ -107,25 +130,4 @@ class Experiment1D(BaseExperiment):
 
             # to live plot latest average
             (I_avg * I_avg + Q_avg * Q_avg).save(self.Y_AVG_tag)
-            x_stream.buffer(self.x_sweep_len).save(self.X_tag)  # sweep variable
-
-    def QUA_sequence(self):
-        """
-        Method that returns the QUA sequence to be executed in the quantum machine.
-        """
-
-        with program() as qua_sequence:
-
-            # Initial variable declaration
-            _ = self.QUA_variable_declaration()
-            n, x, x_stream, I, I_stream, Q, Q_stream = _
-
-            # Experiment loop
-            with for_(n, 0, n < self.reps, n + 1):
-                with for_(x, self.x_start, x < self.x_stop, x + self.x_step):
-                    self.QUA_pulse_sequence()
-                    self.QUA_save_results_to_stream()
-
-            self.QUA_stream_processing()
-
-        return qua_sequence
+            self.x_stream.buffer(self.x_sweep_len).save(self.X_tag)  # sweep variable
