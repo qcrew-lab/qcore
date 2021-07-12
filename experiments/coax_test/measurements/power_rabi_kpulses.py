@@ -6,7 +6,7 @@ reload(cfg), reload(stg)  # reloads modules before executing the code below
 # NOTE: make changes to lo, if, tof, mixer offsets in 'configuration.py'
 # NOTE: make changes to constant pulse amp and pulse duration in the qua script below
 
-MEAS_NAME = "power_rabi_npulses"  # used for naming the saved data file
+MEAS_NAME = "power_rabi_kpulses"  # used for naming the saved data file
 
 ########################################################################################
 ########################           MEASUREMENT SEQUENCE         ########################
