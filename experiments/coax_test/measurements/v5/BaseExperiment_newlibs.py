@@ -2,9 +2,6 @@ from qcrew.experiments.coax_test.imports import *  # Opens QM
 from abc import abstractmethod
 import numpy as np
 
-reload(cfg)
-reload(stg)  # reload stage and configuration before each measurement run
-
 
 class BaseExperiment:
     """
@@ -15,11 +12,11 @@ class BaseExperiment:
 
         # Experiment loop variables
         self.reps = exp_params["reps"]
-        self.wait = exp_params["wait"]
+        self.wait_time = exp_params["wait_time"]
 
         # List of modes to be used in the experiment. The base class does not
         # differentiate the type of each mode.
-        self.mode_list = exp_params["mode_list"]
+        #self.mode_list = exp_params["mode_list"]
 
     @abstractmethod
     def QUA_sequence(self):

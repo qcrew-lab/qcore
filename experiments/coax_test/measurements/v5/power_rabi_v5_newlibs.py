@@ -5,10 +5,14 @@ This class serves as a QUA script generator with user-defined parameters. It
 also defines how the information is retrieved from result handles.
 """
 # --------------------------------- Imports ------------------------------------
-# Retrieves all necessary imports and initializes QM
+from qcrew.experiments.coax_test.imports import *
 from qcrew.experiments.coax_test.measurements.v5.BaseExperiment_newlibs import *
 
-
+stage_module_path = resolve_name(".stage", "qcrew.experiments.coax_test.imports")
+if stage_module_path not in sys.modules:
+    import qcrew.experiments.coax_test.imports.stage as stg
+else:
+    reload(stg)
 # ---------------------------------- Class -------------------------------------
 
 
@@ -23,31 +27,29 @@ class PowerRabi(Experiment1D):
         super().__init__(exp_params)
 
         # Names the modes to be used in the pulse sequence.
-        self.qubit = self.mode_list[0]
-        self.rr = self.mode_list[1]
+        # self.qubit = self.mode_list[0]
+        # self.rr = self.mode_list[1]
 
     def QUA_pulse_sequence(self):
         """
         Defines pulse sequence to be played inside the experiment loop
         """
-
+        """
         self.qubit.play(self.qubit_op, self.x)
         align(self.qubit.name, self.rr.name)
         self.rr.measure(self.readout_op)  # This should account for intW
-        wait(int(self.wait // 4), self.qubit.name)
-
+        wait(int(self.wait_time // 4), self.qubit.name)
         """
-        play("pi" * amp(self.x), "qubit")
+        play(self.qubit_op * amp(self.x), "qubit")
         align("qubit", "rr")
         measure(
-            "readout" * amp(0.2),
+            self.readout_op * amp(0.2),
             "rr",
             None,
             demod.full("integW1", self.I),
             demod.full("integW2", self.Q),
         )
-        wait(int(32000 // 4), "qubit")
-        """
+        wait(int(self.wait_time // 4), "qubit")
 
 
 # -------------------------------- Execution -----------------------------------
@@ -61,9 +63,9 @@ if __name__ == "__main__":
     rr = stg.rr
 
     exp_params = {
-        "reps": 20000,  # number of sweep repetitions
-        "wait": 32000,  # delay between reps in ns, an integer multiple of 4 >= 16
-        "mode_list": [qubit, rr],  # Modes to be used in the exp. (order matters)
+        "reps": 200000,  # number of sweep repetitions
+        "wait_time": 32000,  # delay between reps in ns, an integer multiple of 4 >= 16
+        # "mode_list": [qubit, rr],  # Modes to be used in the exp. (order matters)
         "qubit_op": "pi",  # Operations to be used in the exp.
         "readout_op": "readout",
         "x_start": -1.9,  # amplitude sweep range is set by start, stop, and step
@@ -84,11 +86,13 @@ if __name__ == "__main__":
 
     job = stg.qm.execute(power_rabi)
 
-    ###################        INVOKE HELPERS        #############################
-
+    ####################        INVOKE HELPERS        ###########################
+    # fetch helper and plot hepler
     fetcher = Fetcher(handle=job.result_handles, num_results=experiment.reps)
     plotter = Plotter(title=EXP_NAME, xlabel="Amplitude scale factor")
     stats = (None, None, None)  # to hold running stats (stderr, mean, variance * (n-1))
+
+    # initialise database under dedicated folder
     db = initialise_database(
         exp_name=EXP_NAME,
         sample_name=SAMPLE_NAME,
@@ -98,58 +102,50 @@ if __name__ == "__main__":
         timefilename=True,
     )
 
-    ###################        LIVE POST-PROCESSING LOOP        ##################
+    ##################        LIVE POST-PROCESSING LOOP        ####################
 
     with DataSaver(db) as datasaver:
 
-        ############        SAVE MEASUREMENT RUN METADATA       ####################
+        ###############        SAVE MEASUREMENT RUN METADATA       ###################
 
         datasaver.add_metadata(exp_params)
 
-        while fetcher.is_fetching:  # while the fetcher is not done fetching all results
+        while fetcher.is_fetching:
+            ###############            FETCH PARTIAL RESULTS         ###############
 
-            ###########            FETCH PARTIAL RESULTS         ##################
-
-            partial_results = fetcher.fetch()  # key = tag, value = partial data
-            num_results = fetcher.count  # get number of results fetched so far
+            (num_so_far, update_results) = fetcher.fetch()
             if (
-                not partial_results
+                not update_results
             ):  # empty dict return means no new results are available
                 continue
-            ##############            LIVE SAVE RESULTS         ######################
-            print(type(partial_results))
-            # to only live save raw "I" and "Q" data, we extract them from "partial_results"
-            live_save_dict = {
-                "I": partial_results[experiment.I_tag],
-                "Q": partial_results[experiment.Q_tag],
-            }
-            datasaver.update_multiple_results(live_save_dict, group="data")
+            ################            LIVE SAVE RESULTS         ##################
+            datasaver.update_multiple_results(
+                update_results, save=["I", "Q"], group="data"
+            )
 
-            ######            CALCULATE RUNNING MEAN STANDARD ERROR         ############
+            ########            CALCULATE RUNNING MEAN STANDARD ERROR         #########
 
-            ys_raw = np.sqrt(partial_results[experiment.Y_SQ_RAW_tag])
-            ys_raw_avg = np.sqrt(partial_results[experiment.Y_SQ_RAW_AVG_tag])
-            stats = get_std_err(ys_raw, ys_raw_avg, num_results, *stats)
+            ys_raw = np.sqrt(update_results["Y_SQ_RAW"])
+            ys_raw_avg = np.sqrt(update_results["Y_SQ_RAW_AVG"])
+            stats = get_std_err(ys_raw, ys_raw_avg, num_so_far, *stats)
 
-            ###########            LIVE PLOT AVAILABLE RESULTS         ###############
+            #############            LIVE PLOT AVAILABLE RESULTS         ###########
 
-            ys = np.sqrt(
-                partial_results[experiment.Y_AVG_tag]
-            )  # latest batch of avg signal
-            xs = partial_results[experiment.X_tag]
+            ys = np.sqrt(update_results["Y_AVG"])  # latest batch of average signal
+            xs = update_results["X"]
             plotter.live_plot(
-                xs, ys, num_results, fit_fn=experiment.fit_fn, err=stats[0]
+                xs, ys, num_so_far, fit_fn=experiment.fit_fn, err=stats[0]
             )
             time.sleep(1)  # prevent over-fetching, over-saving, ulta-fast live plotting
 
-        ###################         SAVE REMAINING DATA         ########################
+        ##################         SAVE REMAINING DATA         #####################
 
-        # to save final average and sweep variables, we extract them from
-        # "partial_results"
+        # to save final average and sweep variables, we extract them from "update_results"
         final_save_dict = {"Y_AVG": ys, "X": xs}
-        datasaver.add_multiple_results(final_save_dict, group="data")
-        # NOTE (OPTIONAL) here, we can also save the final plot.
+        datasaver.add_multiple_results(
+            final_save_dict, save=["Y_AVG", "X"], group="data"
+        )
 
-    #########################          fin           #################################
+    ##########################          fin           #############################
 
     print(job.execution_report())
