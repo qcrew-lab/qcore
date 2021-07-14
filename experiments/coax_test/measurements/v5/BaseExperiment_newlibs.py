@@ -3,51 +3,107 @@ from abc import abstractmethod
 import numpy as np
 
 
-class BaseExperiment:
+class Experiment:
     """
-    Abstract base class for experiments using QUA sequences.
+    Abstract class for experiments using QUA sequences.
     """
 
-    def __init__(self, exp_params):
+    def __init__(
+        self,
+        reps,
+        wait_time,
+        x_sweep,
+        is_x_explicit,
+        y_sweep=None,
+        is_y_explicit=None,
+        extra_QUA_var=None,
+    ):
 
         # Experiment loop variables
-        self.reps = exp_params["reps"]
-        self.wait_time = exp_params["wait_time"]
+        self.reps = reps
+        self.wait_time = wait_time
 
-        # List of modes to be used in the experiment. The base class does not
-        # differentiate the type of each mode.
-        #self.mode_list = exp_params["mode_list"]
+        # Sweep configurations
+        self.sweep_config = {"x": x_sweep, "y": y_sweep}
+        self.is_sweep_explicit = {"x": is_x_explicit, "y": is_y_explicit}
+        self.y_sweep = y_sweep
+        self.is_y_explicit = is_y_explicit
 
-    @abstractmethod
-    def QUA_sequence(self):
-        """
-        Defines the QUA sequence of the experiment.
-        """
-        # Try making an attribute of some sort
-        pass
+        # QUA variable definitions {name:type}
+        self.QUA_var_list = {
+            "n": int,
+            "x": None,  # defined in _check_sweeps
+            "y": None,
+            "I": fixed,
+            "Q": fixed,
+        }
+        # TODO add extra variables here
 
+        # Set attributes for QUA variables (specified in QUA_variable_declaration)
+        for var_name in self.QUA_var_list.keys():
+            setattr(self, var_name, None)
 
-class Experiment1D(BaseExperiment):
-    def __init__(self, exp_params):
-
-        # Get X sweep parameters
-        self.x_start = exp_params.pop("x_start")
-        self.x_step = exp_params.pop("x_step")
-        self.x_stop = exp_params.pop("x_stop") + self.x_step / 2  # Corrects x_stop
-        self.x_sweep_len = len(np.arange(self.x_start, self.x_stop, self.x_step))
-        # Fit function
-        self.fit_fn = exp_params.pop("fit_fn")
-
-        # Send the rest to parent
-        super().__init__(exp_params)
-
-        # Result tags for stream processing 1D experiments
+        # Result tags for stream processing experiments
+        self.X_tag = "X"
+        self.Y_tag = "Y"
         self.I_tag = "I"
         self.Q_tag = "Q"
-        self.Y_SQ_RAW_tag = "Y_SQ_RAW"
-        self.Y_SQ_RAW_AVG_tag = "Y_SQ_RAW_AVG"
-        self.Y_AVG_tag = "Y_AVG"
-        self.X_tag = "X"
+        self.Z_SQ_RAW_tag = "Z_SQ_RAW"
+        self.Z_SQ_RAW_AVG_tag = "Z_SQ_RAW_AVG"
+        self.Z_AVG_tag = "Z_AVG"
+
+    def _check_sweeps(self):
+        """
+        Check if each x and y sweep contains numeric elements and has the
+        information needed by qua.for_ or qua.for_all_ loops
+        """
+
+        # Check if the values of sweep are numeric. Includes numpy floats.
+        is_sweep_numeric = all(isinstance(n, (int, float)) for n in new_sweep)
+        if not is_sweep_numeric:
+            print("error: all sweep values should be numeric")
+            raise SystemExit("Unable to create Experiment")
+
+        # Assigns new_sweep to x or y dimension. Doesn't expect more than that
+        if not hasattr(self, "_sweeps"):
+            sweep_dim = "x"
+            self._sweeps = dict()
+        else:
+            sweep_dim = "y"
+
+        # Check if sweep is linear or arbitrary
+        if isinstance(new_sweep, tuple) and len(new_sweep) == 3:
+            # new_sweep is linear
+            is_arbitrary = False
+        elif isinstance(new_sweep, (list, np.ndarray)):
+            # new_sweep is arbitrary
+            is_arbitrary = True
+        else:
+            # new_sweep is not well defined
+            print("error: sweep %s is not well defined" % sweep_dim)
+            raise SystemExit("Unable to create Experiment")
+
+        new_sweep_dict = {"arbitrary": is_arbitrary, "vals": new_sweep}
+        self._sweeps[sweep_dim] = new_sweep_dict
+
+        return
+
+    def QUA_sweep(self, QUA_function, sweep_dim):
+
+        # Check whether the sweep is configured
+        if self.sweep_config[sweep_dim] == None:
+            QUA_function()
+
+        else:
+            # Check the type of the loop
+            if self.is_sweep_explicit[sweep_dim]:
+                # Wrap function in qua.for_ loop
+                with for_(self.n, 0, self.n < self.reps, self.n + 1):
+                    QUA_function()
+            else:
+                # Wrap function in qua.for_all_ loop
+                with for_all_(self.n, 0, self.n < self.reps, self.n + 1):
+                    QUA_function()
 
     @abstractmethod
     def QUA_pulse_sequence(self):
@@ -61,6 +117,9 @@ class Experiment1D(BaseExperiment):
         """
         Method that returns the QUA sequence to be executed in the quantum machine.
         """
+
+        # Check if the sweep configurations are sane
+        self._check_sweeps()
 
         with program() as qua_sequence:
 
@@ -82,13 +141,12 @@ class Experiment1D(BaseExperiment):
 
     def QUA_variable_declaration(self):
         """
-        Macro that calls QUA variable declaration statements. Variables must be defined
-        as attributes to be accessed in other methods.
+        Macro that calls QUA variable declaration statements. The variables are
+        specified in QUA_var_list.
         """
-        self.n = declare(int)  # averaging loop variable
-        self.x = declare(fixed)  # sweep variable "x"
-        self.I = declare(fixed)  # result variable "I"
-        self.Q = declare(fixed)  # result variable "Q"
+        for key, val in self.QUA_var_list:
+            if val:
+                setattr(self, key, declare(val))
 
     def QUA_stream_declaration(self):
         """
@@ -122,9 +180,9 @@ class Experiment1D(BaseExperiment):
             Q_raw.save_all(self.Q_tag)  # to save all raw I and Q data
 
             # we need these two streams to calculate std err in a single pass
-            (I_raw * I_raw + Q_raw * Q_raw).save_all(self.Y_SQ_RAW_tag)
-            (I_raw * I_raw + Q_raw * Q_raw).average().save_all(self.Y_SQ_RAW_AVG_tag)
+            (I_raw * I_raw + Q_raw * Q_raw).save_all(self.Z_SQ_RAW_tag)
+            (I_raw * I_raw + Q_raw * Q_raw).average().save_all(self.Z_SQ_RAW_AVG_tag)
 
             # to live plot latest average
-            (I_avg * I_avg + Q_avg * Q_avg).save(self.Y_AVG_tag)
+            (I_avg * I_avg + Q_avg * Q_avg).save(self.Z_AVG_tag)
             self.x_stream.buffer(self.x_sweep_len).save(self.X_tag)  # sweep variable

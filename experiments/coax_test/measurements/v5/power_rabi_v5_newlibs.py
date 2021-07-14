@@ -16,19 +16,16 @@ else:
 # ---------------------------------- Class -------------------------------------
 
 
-class PowerRabi(Experiment1D):
-    def __init__(self, exp_params):
+class PowerRabi(Experiment):
+    def __init__(self, qubit_op, readout_op, fit_fn = None, **other_params):
 
-        # Retrieves operations
-        self.qubit_op = exp_params.pop("qubit_op")
-        self.readout_op = exp_params.pop("readout_op")
+        # Get attributes
+        self.qubit_op = qubit_op
+        self.readout_op = readout_op
+        self.fit_fn = fit_fn
 
-        # Passes other parameters to parent
-        super().__init__(exp_params)
-
-        # Names the modes to be used in the pulse sequence.
-        # self.qubit = self.mode_list[0]
-        # self.rr = self.mode_list[1]
+        # Passes remaining parameters to parent
+        super().__init__(**other_params)
 
     def QUA_pulse_sequence(self):
         """
@@ -63,14 +60,12 @@ if __name__ == "__main__":
     rr = stg.rr
 
     exp_params = {
-        "reps": 200000,  # number of sweep repetitions
+        "reps": 1000,  # number of sweep repetitions
         "wait_time": 32000,  # delay between reps in ns, an integer multiple of 4 >= 16
-        # "mode_list": [qubit, rr],  # Modes to be used in the exp. (order matters)
+        "x_sweep": (-1.9, 1.9, 0.1),  # x sweep is set by start, stop, and step
+        "is_x_sweep_arbitrary": False  # Tells whether x sweep has arbitrary values 
         "qubit_op": "pi",  # Operations to be used in the exp.
         "readout_op": "readout",
-        "x_start": -1.9,  # amplitude sweep range is set by start, stop, and step
-        "x_stop": 1.9,
-        "x_step": 0.1,
         "fit_fn": "sine",  # name eof the fit function
     }
 
