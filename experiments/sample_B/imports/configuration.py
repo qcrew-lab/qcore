@@ -38,7 +38,7 @@ def IQ_imbalance(gain: float, phase: float) -> list[float]:
 ########################################################################################
 # readout pulse
 rr_time_of_flight = 1600  # in ns
-rr_LO =  int(9.453e9)
+rr_LO = int(9.453e9)
 rr_IF = int(-49.4e6)
 
 # qubit pulse
@@ -93,11 +93,11 @@ saturation_pulse_len = 4000
 saturation_pulse_amp = 0.25
 
 # (maximum, sigma, multiple_of_sigma)
-gaussian_pulse_wf_I_samples = gaussian_fn(0.25, 125, 4)
+gaussian_pulse_wf_I_samples = gaussian_fn(0.25, 60, 4)
 gaussian_pulse_len = len(gaussian_pulse_wf_I_samples)
 
 # (maximum, drag, sigma, multiple_of_sigma)
-gaussian_derivative_wf_samples = gaussian_derivative_fn(0.25, 1, 125, 4)
+gaussian_derivative_wf_samples = gaussian_derivative_fn(0.25, 1, 60, 4)
 gaussian_drag_pulse_len = len(gaussian_derivative_wf_samples)
 
 ################################### EXCLUSIVE PULSES ###################################

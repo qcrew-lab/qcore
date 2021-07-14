@@ -19,7 +19,7 @@ DATAPATH = Path.cwd() / "data"
 
 #########################        MEASUREMENT PARAMETERS        #########################
 metadata = {
-    "reps": 500,  # number of sweep repetitions
+    "reps": 5000,  # number of sweep repetitions
     "wait_time": 300000,  # delay between reps in ns, an integer multiple of 4 >= 16
     "a_start": -1.9,  # amplitude sweep range is set by start, stop, and step
     "a_stop": 1.9,

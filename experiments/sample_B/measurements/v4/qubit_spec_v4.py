@@ -3,6 +3,12 @@
 from qcrew.experiments.sample_B.imports import *
 from types import SimpleNamespace
 
+stage_module_path = resolve_name(".stage", "qcrew.experiments.sample_B.imports")
+if stage_module_path not in sys.modules:
+    import qcrew.experiments.sample_B.imports.stage as stg
+else:
+    reload(stg)
+
 ##########################        DATA SAVING VARIABLES       ##########################
 
 SAMPLE_NAME = "sample_B"
