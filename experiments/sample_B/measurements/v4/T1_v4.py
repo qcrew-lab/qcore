@@ -3,6 +3,13 @@
 from qcrew.experiments.sample_B.imports import *
 from types import SimpleNamespace
 
+stage_module_path = resolve_name(".stage", "qcrew.experiments.sample_B.imports")
+if stage_module_path not in sys.modules:
+    import qcrew.experiments.sample_B.imports.stage as stg
+else:
+    reload(stg)
+
+
 ##########################        DATA SAVING VARIABLES       ##########################
 
 SAMPLE_NAME = "sample_B"
@@ -26,8 +33,8 @@ metadata = {
     "rr_int_freq": stg.rr.int_freq,  # frequency played by OPX to rr
     "qubit_lo_freq": stg.qubit.lo_freq,  # frequency of local oscillator driving qubit
     "qubit_int_freq": stg.qubit.int_freq,  # frequency played by OPX to qubit
-    "qubit_op": "pi_drag",  # qubit pulse name as defined in the config
-    "qubit_op_ampx":1 ,
+    "qubit_op": "gaussian",  # qubit pulse name as defined in the config
+    "qubit_op_ampx":1.5,
     "qubit_name": stg.qubit.name,
 }
 
