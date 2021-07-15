@@ -16,21 +16,18 @@ else:
 # ---------------------------------- Class -------------------------------------
 
 
-class PowerRabi(Experiment1D):
-    def __init__(self, exp_params):
+class PowerRabi(Experiment):
+    def __init__(self, qubit_op, readout_op, fit_fn=None, **other_params):
 
-        # Retrieves operations
-        self.qubit_op = exp_params.pop("qubit_op")
-        self.readout_op = exp_params.pop("readout_op")
+        # Get attributes
+        self.qubit_op = qubit_op
+        self.readout_op = readout_op
+        self.fit_fn = fit_fn
 
-        # Passes other parameters to parent
-        super().__init__(exp_params)
+        # Passes remaining parameters to parent
+        super().__init__(**other_params)
 
-        # Names the modes to be used in the pulse sequence.
-        # self.qubit = self.mode_list[0]
-        # self.rr = self.mode_list[1]
-
-    def QUA_pulse_sequence(self):
+    def QUA_play_pulse_sequence(self):
         """
         Defines pulse sequence to be played inside the experiment loop
         """
@@ -39,6 +36,7 @@ class PowerRabi(Experiment1D):
         align(self.qubit.name, self.rr.name)
         self.rr.measure(self.readout_op)  # This should account for intW
         wait(int(self.wait_time // 4), self.qubit.name)
+        self.QUA_stream_results()
         """
         play(self.qubit_op * amp(self.x), "qubit")
         align("qubit", "rr")
@@ -50,6 +48,9 @@ class PowerRabi(Experiment1D):
             demod.full("integW2", self.Q),
         )
         wait(int(self.wait_time // 4), "qubit")
+        save(self.x, self.x_stream)
+        save(self.I, self.I_stream)
+        save(self.Q, self.Q_stream)
 
 
 # -------------------------------- Execution -----------------------------------
@@ -63,14 +64,12 @@ if __name__ == "__main__":
     rr = stg.rr
 
     exp_params = {
-        "reps": 200000,  # number of sweep repetitions
+        "reps": 1000,  # number of sweep repetitions
         "wait_time": 32000,  # delay between reps in ns, an integer multiple of 4 >= 16
-        # "mode_list": [qubit, rr],  # Modes to be used in the exp. (order matters)
+        "x_sweep": (-1.9, 1.9, 0.1),  # x sweep is set by start, stop, and step
+        "is_x_explicit": False,  # Tells whether x sweep has arbitrary values
         "qubit_op": "pi",  # Operations to be used in the exp.
         "readout_op": "readout",
-        "x_start": -1.9,  # amplitude sweep range is set by start, stop, and step
-        "x_stop": 1.9,
-        "x_step": 0.1,
         "fit_fn": "sine",  # name eof the fit function
     }
 
@@ -79,7 +78,7 @@ if __name__ == "__main__":
     PROJECT_FOLDER_NAME = "coax_test"
     DATAPATH = Path.cwd() / "data"
 
-    experiment = PowerRabi(exp_params)
+    experiment = PowerRabi(**exp_params)
     power_rabi = experiment.QUA_sequence()
 
     ###################        RUN MEASUREMENT        ############################
@@ -125,14 +124,14 @@ if __name__ == "__main__":
 
             ########            CALCULATE RUNNING MEAN STANDARD ERROR         #########
 
-            ys_raw = np.sqrt(update_results["Y_SQ_RAW"])
-            ys_raw_avg = np.sqrt(update_results["Y_SQ_RAW_AVG"])
+            ys_raw = np.sqrt(update_results["Z_SQ_RAW"])
+            ys_raw_avg = np.sqrt(update_results["Z_SQ_RAW_AVG"])
             stats = get_std_err(ys_raw, ys_raw_avg, num_so_far, *stats)
 
             #############            LIVE PLOT AVAILABLE RESULTS         ###########
 
-            ys = np.sqrt(update_results["Y_AVG"])  # latest batch of average signal
-            xs = update_results["X"]
+            ys = np.sqrt(update_results["Z_AVG"])  # latest batch of average signal
+            xs = update_results["x"]
             plotter.live_plot(
                 xs, ys, num_so_far, fit_fn=experiment.fit_fn, err=stats[0]
             )
@@ -141,9 +140,9 @@ if __name__ == "__main__":
         ##################         SAVE REMAINING DATA         #####################
 
         # to save final average and sweep variables, we extract them from "update_results"
-        final_save_dict = {"Y_AVG": ys, "X": xs}
+        final_save_dict = {"Z_AVG": ys, "x": xs}
         datasaver.add_multiple_results(
-            final_save_dict, save=["Y_AVG", "X"], group="data"
+            final_save_dict, save=["Z_AVG", "x"], group="data"
         )
 
     ##########################          fin           #############################
