@@ -24,10 +24,9 @@ class Experiment:
         self.wait_time = wait_time
 
         # Sweep configurations
-        self.sweep_config = {"x": x_sweep, "y": y_sweep}
-        self.is_sweep_explicit = {"x": is_x_explicit, "y": is_y_explicit}
-        self.y_sweep = y_sweep
-        self.is_y_explicit = is_y_explicit
+        self.sweep_config = {"n": (0, self.reps, 1), "x": x_sweep, "y": y_sweep}
+        self.is_sweep_explicit = {"n": False, "x": is_x_explicit, "y": is_y_explicit}
+        self.buffering = tuple()  # defined in _check_sweeps
 
         # QUA variable definitions {name:type}
         self.QUA_var_list = {
@@ -37,81 +36,63 @@ class Experiment:
             "I": fixed,
             "Q": fixed,
         }
-        # TODO add extra variables here
+
+        # List of variables to be sent to streams. More added in _check_sweeps
+        self.QUA_stream_list = ["I", "Q"]
 
         # Set attributes for QUA variables (specified in QUA_variable_declaration)
         for var_name in self.QUA_var_list.keys():
             setattr(self, var_name, None)
 
-        # Result tags for stream processing experiments
-        self.X_tag = "X"
-        self.Y_tag = "Y"
-        self.I_tag = "I"
-        self.Q_tag = "Q"
+        # Set attributes for QUA streams (specified in QUA_stream_declaration)
+        # Also set attributes for server memory tags
+        for stream_name in self.QUA_stream_list:
+            setattr(self, stream_name + "_stream", None)
+            setattr(self, stream_name + "_tag", None)
+
+        # Extra memory tags for saving server-side stream operation results
         self.Z_SQ_RAW_tag = "Z_SQ_RAW"
         self.Z_SQ_RAW_AVG_tag = "Z_SQ_RAW_AVG"
         self.Z_AVG_tag = "Z_AVG"
 
     def _check_sweeps(self):
         """
-        Check if each x and y sweep contains numeric elements and has the
-        information needed by qua.for_ or qua.for_all_ loops
+        Check if each x and y sweeps are correctly configured. If so, update buffering, QUA_var_list, and QUA_stream_list accordingly.
         """
 
-        # Check if the values of sweep are numeric. Includes numpy floats.
-        is_sweep_numeric = all(isinstance(n, (int, float)) for n in new_sweep)
-        if not is_sweep_numeric:
-            print("error: all sweep values should be numeric")
-            raise SystemExit("Unable to create Experiment")
+        buffering = list()
+        for sweep_dim in ["x", "y"]:
 
-        # Assigns new_sweep to x or y dimension. Doesn't expect more than that
-        if not hasattr(self, "_sweeps"):
-            sweep_dim = "x"
-            self._sweeps = dict()
-        else:
-            sweep_dim = "y"
+            if self.sweep_config[sweep_dim] == None:
+                # Sweep is not configured. No need for updates.
+                continue
 
-        # Check if sweep is linear or arbitrary
-        if isinstance(new_sweep, tuple) and len(new_sweep) == 3:
-            # new_sweep is linear
-            is_arbitrary = False
-        elif isinstance(new_sweep, (list, np.ndarray)):
-            # new_sweep is arbitrary
-            is_arbitrary = True
-        else:
-            # new_sweep is not well defined
-            print("error: sweep %s is not well defined" % sweep_dim)
-            raise SystemExit("Unable to create Experiment")
+            # Assign stream to configured sweep
+            self.QUA_stream_list.append(sweep_dim)
 
-        new_sweep_dict = {"arbitrary": is_arbitrary, "vals": new_sweep}
-        self._sweeps[sweep_dim] = new_sweep_dict
+            # Retrieve explicit sweep values from available info
+            sweep_array = list()
+            if self.is_sweep_explicit[sweep_dim]:
+                # Sweep values are explicitly defined
+                sweep_array = self.sweep_config[sweep_dim]
+            else:
+                # Sweep values are not explicitly defined
+                _ = self.sweep_config[sweep_dim]
+                start, stop, step = _  # Unpack start, stop, step
+                sweep_array = np.arange(start, stop + step / 2, step)  # Build array
+
+            # Check data type and update QUA_var_list
+            if all(isinstance(s, int) for s in sweep_array):
+                self.QUA_var_list[sweep_dim] = int
+            else:
+                self.QUA_var_list[sweep_dim] = fixed
+
+            buffering.append(len(sweep_array))
+
+        # Update buffering
+        self.buffering = tuple(buffering)
 
         return
-
-    def QUA_sweep(self, QUA_function, sweep_dim):
-
-        # Check whether the sweep is configured
-        if self.sweep_config[sweep_dim] == None:
-            QUA_function()
-
-        else:
-            # Check the type of the loop
-            if self.is_sweep_explicit[sweep_dim]:
-                # Wrap function in qua.for_ loop
-                with for_(self.n, 0, self.n < self.reps, self.n + 1):
-                    QUA_function()
-            else:
-                # Wrap function in qua.for_all_ loop
-                with for_all_(self.n, 0, self.n < self.reps, self.n + 1):
-                    QUA_function()
-
-    @abstractmethod
-    def QUA_pulse_sequence(self):
-        """
-        Macro that defines the QUA pulse sequence inside the experiment loop. It is
-        specified by the experiment (spectroscopy, power rabi, etc.) in the child class.
-        """
-        pass
 
     def QUA_sequence(self):
         """
@@ -120,69 +101,133 @@ class Experiment:
 
         # Check if the sweep configurations are sane
         self._check_sweeps()
-
+        # print(self.QUA_var_list)
+        # print(self.QUA_stream_list)
+        # print(self.buffering)
         with program() as qua_sequence:
 
             # Initial variable and stream declarations
-            self.QUA_variable_declaration()
-            self.QUA_stream_declaration()
+            self.QUA_declare_variables()
+            self.QUA_declare_streams()
 
             # Experiment loop
-            with for_(self.n, 0, self.n < self.reps, self.n + 1):
-                with for_(
-                    self.x, self.x_start, self.x < self.x_stop, self.x + self.x_step
-                ):
-                    self.QUA_pulse_sequence()
-                    self.QUA_save_results_to_stream()
+            self.QUA_sweep(
+                "n",
+                self.QUA_sweep("x", self.QUA_sweep("y", self.QUA_play_pulse_sequence)),
+            )
 
-            self.QUA_stream_processing()
+            # Define stream processing
+            self.QUA_do_stream_processing()
 
         return qua_sequence
 
-    def QUA_variable_declaration(self):
+    ############### Definition of Macros used in QUA_sequence ###############
+
+    def QUA_declare_variables(self):
         """
         Macro that calls QUA variable declaration statements. The variables are
         specified in QUA_var_list.
         """
-        for key, val in self.QUA_var_list:
+        for key, val in self.QUA_var_list.items():
             if val:
                 setattr(self, key, declare(val))
 
-    def QUA_stream_declaration(self):
+    def QUA_declare_streams(self):
         """
-        Macro that calls QUA stream declaration statements. Streams must be defined
-        as attributes to be accessed in other methods.
+        Macro that calls QUA stream declaration statements. The streams are
+        specified in QUA_stream_list. The "_stream" description is appended to the
+        attribute name. Corresponding memory tag attributes are defined with a "_tag"
+        appendix.
         """
-        self.x_stream = declare_stream()  # to save "x"
-        self.I_stream = declare_stream()  # to save "I"
-        self.Q_stream = declare_stream()  # to save "Q"
+        for var in self.QUA_stream_list:
+            # Declare stream
+            setattr(self, var + "_stream", declare_stream())
+            # Define a memory tag for data saving
+            setattr(self, var + "_tag", var)
 
-    def QUA_save_results_to_stream(self):
+    def QUA_sweep(self, sweep_dim, QUA_function):
         """
-        Macro that calls QUA save statements.
+        Macro that sets up configured sweeps with qua.for_ or qua.for_all_ loops
+        depending on the need.
         """
-        save(self.x, self.x_stream)
-        save(self.I, self.I_stream)
-        save(self.Q, self.Q_stream)
 
-    def QUA_stream_processing(self):
+        # If sweep is not configured, simply play function
+        if self.QUA_var_list[sweep_dim] == None:
+            QUA_function()
+            return
+
+        # Get sweep variable
+        sweep_var = getattr(self, sweep_dim)
+
+        # Check the type of the loop
+        if self.is_sweep_explicit[sweep_dim]:
+            # Get array of values to sweep over
+            loop_array = self.sweep_config[sweep_dim]
+            # Wrap function in qua.for_all_ loop
+            with for_all_(sweep_var, loop_array):
+                QUA_function()
+        else:
+            # Wrap function in qua.for_ loop
+            start, stop, step = self.sweep_config[sweep_dim]
+            with for_(sweep_var, start, sweep_var < stop + step / 2, sweep_var + step):
+                QUA_function()
+
+    @abstractmethod
+    def QUA_play_pulse_sequence(self):
         """
-        Macro that calls QUA save statements. QUA variables x, I, Q and respective
-        streams are defined in method QUA_variable_declaration
+        Macro that defines the QUA pulse sequence inside the experiment loop. It is
+        specified by the experiment (spectroscopy, power rabi, etc.) in the child class.
+        """
+        pass
+
+    def QUA_stream_results(self):
+        """
+        Macro that calls QUA save statements. This streams variable values flagged in
+        QUA_stream_list to corresponding streams. It should be called in
+        QUA_play_pulse_sequence.
+        """
+        for var in self.QUA_stream_list:
+            save(getattr(self, var), getattr(self, var + "_stream"))
+
+    def QUA_do_stream_processing(self):
+        """
+        Macro that opens QUA stream_processing() context manager and executes (1) the
+        results (I, Q) stream processing and (2) other variable's processing.
         """
         with stream_processing():
-            I_raw = self.I_stream.buffer(self.x_sweep_len)
-            Q_raw = self.Q_stream.buffer(self.x_sweep_len)  # to reshape result streams
-            I_avg = I_raw.average()
-            Q_avg = Q_raw.average()  # to get running averages
+            self.QUA_process_IQ()
+            self.QUA_process_other()
 
-            I_raw.save_all(self.I_tag)
-            Q_raw.save_all(self.Q_tag)  # to save all raw I and Q data
+    def QUA_process_IQ(self):
+        """
+        Macro that stores I and Q results from corresponding streams in server memory
+        locations identified by tags. Also set up extra server-side stream calculations
+        and save those in memory for live plot and standard error estimation.
+        """
+        # Is and Qs
+        I_raw = self.I_stream.buffer(**self.buffering)
+        Q_raw = self.Q_stream.buffer(**self.buffering)  # to reshape result streams
+        I_avg = I_raw.average()
+        Q_avg = Q_raw.average()
+        I_raw.save_all(self.I_tag)
+        Q_raw.save_all(self.Q_tag)
 
-            # we need these two streams to calculate std err in a single pass
-            (I_raw * I_raw + Q_raw * Q_raw).save_all(self.Z_SQ_RAW_tag)
-            (I_raw * I_raw + Q_raw * Q_raw).average().save_all(self.Z_SQ_RAW_AVG_tag)
+        # we need these two streams to calculate std err in a single pass
+        (I_raw * I_raw + Q_raw * Q_raw).save_all(self.Z_SQ_RAW_tag)
+        (I_raw * I_raw + Q_raw * Q_raw).average().save_all(self.Z_SQ_RAW_AVG_tag)
 
-            # to live plot latest average
-            (I_avg * I_avg + Q_avg * Q_avg).save(self.Z_AVG_tag)
-            self.x_stream.buffer(self.x_sweep_len).save(self.X_tag)  # sweep variable
+        # to live plot latest average
+        (I_avg * I_avg + Q_avg * Q_avg).save(self.Z_AVG_tag)
+
+    def QUA_process_other(self):
+        """
+        Macro that stores non-I,Q results from corresponding streams in server memory
+        locations identified by tags.
+        """
+        for var in self.QUA_stream_list:
+            if var in {"I", "Q"}:
+                # This processing is done in QUA_process_IQ
+                continue
+            stream = getattr(self, var + "_stream")
+            memory_tag = getattr(self, var + "_tag")
+            stream.buffer(**self.buffering).save(memory_tag)
