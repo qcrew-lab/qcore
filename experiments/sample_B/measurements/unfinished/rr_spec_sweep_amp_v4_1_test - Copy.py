@@ -47,13 +47,9 @@ metadata = {
 
 f_start, f_stop, f_step = metadata["f_start"], metadata["f_stop"], metadata["f_step"]
 rr_f_list = np.arange(f_start, f_stop, f_step)
-# if the length is L, the buffer_length is L+1, pls refer to the metadata["sweep_length_f"]
-metadata["sweep_length_f"] = len(np.arange(f_start, f_stop + f_step / 2, f_step))
-
+metadata["sweep_length"] = len(np.arange(f_start, f_stop + f_step / 2, f_step))
 a_start, a_stop, num_a = metadata["a_start"], metadata["a_stop"], metadata["num_a"]
 rr_ascale = np.linspace(a_start, a_stop, num_a)
-metadata["sweep_length_a_ascale"] = len(rr_ascale)
-
 
 qubit_ascale = 1
 
@@ -73,9 +69,6 @@ buffer_lengths = [
 ]
 
 
-buffer_lengths_test = [metadata["sweep_length_a_ascale"], metadata["sweep_length_f"]]
-
-
 # qubit_a_vec = parameter_list[0]
 # rr_a_vec = parameter_list[1]
 ########################        QUA PROGRAM DEFINITION        ##########################
@@ -92,7 +85,11 @@ with program() as rr_spec_amp:
     qubit_a = declare(fixed)
     rr_a = declare(fixed)
 
-    rr_a_vec = declare(fixed, value=rr_ascale)
+    # Arrays for sweeping
+    # qubit_a_vec = declare(fixed, value=parameter_list[0])
+    # rr_a_vec = declare(fixed, value=parameter_list[1])
+    qubit_a_vec = declare(fixed, value = [1, 1, 1])
+    rr_a_vec = declare(fixed, value = [0.01, 0.015, 0.02])
 
     # Outpus
     I = declare(fixed)
@@ -106,11 +103,16 @@ with program() as rr_spec_amp:
 
     with for_(n, 0, n < mes.reps, n + 1):
         # Qubit and resonator pulse amplitude scaling loop
-        with for_each_((rr_a), (rr_a_vec)):
+        with for_each_((qubit_a, rr_a), (qubit_a_vec, rr_a_vec)):
             # Frequency sweep
+            #with for_(f, mes.f_start, f < mes.f_stop + mes.f_step / 2, f + mes.f_step):
             with for_(f, mes.f_start, f < mes.f_stop + mes.f_step / 2, f + mes.f_step):
+
                 update_frequency(mes.rr_name, f)
 
+                play(mes.qubit_op * amp(qubit_a), mes.qubit_name)
+
+                align(mes.qubit_name, mes.rr_name)
                 measure(
                     mes.rr_op * amp(rr_a),
                     mes.rr_name,
@@ -118,7 +120,7 @@ with program() as rr_spec_amp:
                     demod.full(mes.rr_integW1, I),
                     demod.full(mes.rr_integW2, Q),
                 )
-                wait(int(mes.wait_time // 4), mes.rr_name)
+                wait(int(mes.wait_time // 4), mes.qubit_name)
                 save(f, f_stream)
                 save(I, I_stream)
                 save(Q, Q_stream)
@@ -126,44 +128,30 @@ with program() as rr_spec_amp:
     #####################        RESULT STREAM PROCESSING        #######################
 
     with stream_processing():
+        f_stream.buffer(*buffer_lengths).save("F")  # to save sweep variable
 
-        ## Method 1:
-        # Note: When we calculate the data before the buffer, there is something wrong with the "num_so_far" in ""LIVE SAVE RESULTS ""
+        I_raw = I_stream.buffer(*buffer_lengths)
+        Q_raw = Q_stream.buffer(*buffer_lengths)
 
-        f_stream.buffer(*buffer_lengths_test).save("F")
+        I_avg = I_raw.average()
+        Q_avg = Q_raw.average()
 
-        I_raw1 = I_stream
-        Q_raw1 = Q_stream
 
-        I_raw1.save_all("I")
-        Q_raw1.save_all("Q")
+        # raw  I and Q
+        I_raw.save_all("I")
+        Q_raw.save_all("Q")
 
-        (I_raw1 * I_raw1 + Q_raw1 * Q_raw1).buffer(*buffer_lengths_test).save_all("Y_RAW")
-        (I_raw1 * I_raw1 + Q_raw1 * Q_raw1).buffer(*buffer_lengths_test).average().save_all("Y_RAW_AVG")
-        (I_raw1 * I_raw1 + Q_raw1 * Q_raw1).buffer(*buffer_lengths_test).average().save("Y_AVG")
+        # average I and Q
 
-        ###########################################
+        I_avg.save("I_avg")
+        Q_avg.save("Q_avg")
 
-        ##Method 2:
+        
 
-        # f_stream.buffer(*buffer_lengths_test).save("F")  # to save sweep variable
-
-        # I_raw = I_stream.buffer(*buffer_lengths_test)
-        # Q_raw = Q_stream.buffer(*buffer_lengths_test)
-
-        # I_avg = I_raw.average()
-        # Q_avg = Q_raw.average()
-
-        # # raw  I and Q
-        # I_raw.save_all("I")
-        # Q_raw.save_all("Q")
-
-        # # average I and Q
-
-        # I_avg.save("I_avg")
-        # Q_avg.save("Q_avg")
-
-        ####################################################
+        # we need these two streams to calculate std err in a single pass
+        # (I_raw * I_raw + Q_raw * Q_raw).save_all("Y_SQ_RAW")
+        # (I_raw * I_raw + Q_raw * Q_raw).average().save_all("Y_SQ_RAW_AVG")
+        # (I_avg * I_avg + Q_avg * Q_avg).save("Y_AVG")
 
 #############################        RUN MEASUREMENT        ############################
 
@@ -206,38 +194,31 @@ with DataSaver(db) as datasaver:
 
         ##########            CALCULATE RUNNING MEAN STANDARD ERROR         ############
 
-        fig = plt.figure(figsize=(9, 6))
-        ax = fig.add_subplot(1,1,1)
+        
         for index, rr_amplitude in enumerate(rr_ascale):
-            # ys_raw = np.sqrt(update_results[:,index,:])
-            # ys_raw_avg = np.sqrt(update_results[:,index,:])
-            # stats = get_std_err(ys_raw, ys_raw_avg, num_a, *stats)
-            xs = update_results["F"][0]
-            ys = np.sqrt(update_results["Y_AVG"][index])
-            plt.plot(xs, ys, label="r_a = {}".format((rr_amplitude)))
+            I_list = update_results["I_avg"][0,index]
+            Q_list = update_results["Q_avg"][0,index]
+            ys = np.abs(I_list + 1j * Q_list)
+            xs = update_results["F"][0, index]
+        
+      
 
-        plt.legend()
-        plt.show()
-        ax.clear()
-        time.sleep(1)
 
-        # fig = plt.figure(figsize=(9, 6))
-        # # hdisplay = display.display("", display_id=True)
-        # ax = fig.add_subplot(1, 1, 1)
-        # for index, rr_amplitude in enumerate(rr_ascale):
 
-        #     I_avg = update_results["I_avg"][index]
-        #     Q_avg = update_results["Q_avg"][index]
-        #     xs = update_results["F"][0]
-        #     ys = np.sqrt(I_avg * I_avg + Q_avg * Q_avg)
-        #     plt.plot(xs, ys, label="r_a = {}".format((rr_amplitude)))
 
-        plt.legend()
-        plt.show()
-        ax.clear()
-        time.sleep(1)
+            # ys_raw = np.sqrt(update_results["Y_SQ_RAW"][0, index, :])
+            # ys_raw_avg = np.sqrt(update_results["Y_SQ_RAW_AVG"][0, index, :])
+            # stats = get_std_err(ys_raw, ys_raw_avg, num_so_far, *stats)
 
-        #################            LIVE PLOT AVAILABLE RESULTS         ###############
+            #################            LIVE PLOT AVAILABLE RESULTS         ###############
+
+            # ys = np.sqrt(
+            #     update_results["Y_AVG"][0, index]
+            # )  # latest batch of average signal
+            # xs = update_results["F"][0, index]
+            #plotter.live_plot(xs, ys, num_so_far, fit_fn=mes.fit_fn, err=stats[0])
+            plotter.live_plot(xs, ys, num_so_far, fit_fn=None, err=None)
+            # time.sleep(1)  # prevent over-fetching, over-saving, ulta-fast live plotting
 
     #######################         SAVE REMAINING DATA         ########################
 
