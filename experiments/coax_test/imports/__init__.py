@@ -18,6 +18,7 @@ from qcrew.codebase.utils.statistician import get_std_err
 from qcrew.codebase.utils.fixed_point_library import Fixed, Int
 from qcrew.codebase.datasaver.hdf5_helper import initialise_database, DataSaver
 from qcrew.codebase.analysis import fit
+import qcrew.codebase.utils.qua_macros as macros
 
 # qua modules
 from qm.qua import *
