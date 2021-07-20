@@ -64,10 +64,8 @@ if __name__ == "__main__":
     exp_params = {
         "reps": 200000,  # number of sweep repetitions
         "wait_time": 32000,  # delay between reps in ns, an integer multiple of 4 >= 16
-        "x_sweep": (-2, 2, 0.2),  # x sweep is set by start, stop, and step
-        "is_x_explicit": False,  # Tells whether x sweep has arbitrary values
-        # "y_sweep": (-2, 2, 0.2),  # x sweep is set by start, stop, and step
-        # "is_y_explicit": False,  # Tells whether x sweep has arbitrary values
+        "x_sweep": (-2, 2 + 0.2 / 2, 0.2),  # x sweep is set by start, stop, and step
+        # "y_sweep": [True, False],  # x sweep is set by start, stop, and step
         "qubit_op": "pi",  # Operations to be used in the exp.
         "readout_op": "readout",
         "fit_fn": "sine",  # name eof the fit function
@@ -84,9 +82,9 @@ if __name__ == "__main__":
     ###################        RUN MEASUREMENT        ############################
 
     job = stg.qm.execute(power_rabi)
-
     ####################        INVOKE HELPERS        ###########################
     # fetch helper and plot hepler
+
     fetcher = Fetcher(handle=job.result_handles, num_results=experiment.reps)
     plotter = Plotter(title=EXP_NAME, xlabel="Amplitude scale factor")
     stats = (None, None, None)  # to hold running stats (stderr, mean, variance * (n-1))
