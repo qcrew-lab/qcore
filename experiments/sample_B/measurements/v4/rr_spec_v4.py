@@ -20,7 +20,7 @@ DATAPATH = Path.cwd() / "data"
 #########################        MEASUREMENT PARAMETERS        #########################
 
 metadata = {
-    "reps": 8000,  # number of sweep repetitions
+    "reps": 1000,  # number of sweep repetitions
     "wait_time": 75000,  # delay between reps in ns, an integer multiple of 4 >= 16
     "f_start": -51e6,  # frequency sweep range is set by start, stop, and step
     "f_stop": -46e6,
@@ -135,6 +135,11 @@ with DataSaver(db) as datasaver:
         datasaver.update_multiple_results(update_results, save=["I", "Q"], group="data")
 
         ##########            CALCULATE RUNNING MEAN STANDARD ERROR         ############
+
+
+        
+
+
 
         ys_raw = np.sqrt(update_results["Y_SQ_RAW"])
         ys_raw_avg = np.sqrt(update_results["Y_SQ_RAW_AVG"])
