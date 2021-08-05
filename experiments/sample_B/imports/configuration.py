@@ -36,6 +36,10 @@ def IQ_imbalance(gain: float, phase: float) -> list[float]:
 ########################################################################################
 ##############################           ELEMENTS         ##############################
 ########################################################################################
+
+
+
+
 # readout pulse
 rr_time_of_flight = 1600  # in ns
 rr_LO = int(9.453e9)
@@ -46,8 +50,20 @@ rr_IF = int(-49.4e6)
 qubit_LO = int(4.1235e9)
 qubit_IF = int(-47.55e6)
 
+
+# cavity pulse
+cavity_LO = int(6.0e9)
+cavity_IF = int(-50e6)
+
+
 # qubit_LO = 4.0e9
 # qubit_IF = -47.55e6
+
+cavity_mixer_gain = 0.048832416534423814
+cavity_mixer_phase = -0.10307483673095706
+cavity_offset_I = 0.10078125
+cavity_offset_Q = -0.008203125
+
 
 
 rr_mixer_gain = 0.048832416534423814
@@ -80,6 +96,12 @@ rr_mixer_offsets = {
 ########################################################################################
 
 ################################### ARBITRARY PULSES ###################################
+# cavity pulse
+
+
+
+
+
 # readout pulse
 readout_pulse_len = 4000
 readout_pulse_amp = 0.2
