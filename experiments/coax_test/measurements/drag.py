@@ -16,14 +16,14 @@ wait_time = 12500  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
-qubit_pi_op = "drag"  # same as pi pulse, but with gaussian derivative q wf
-qubit_f = 190e6  # qubit.int_freq
+qubit_pi_op = "test_pi"  # same as pi pulse, but with gaussian derivative q wf
+qubit_f = qubit.int_freq
 
 # drag coefficient beta scaling sweep range
-b_start = 0.0
-b_stop = 0.20
-b_step = 0.01
-b_list = np.arange(b_start, b_stop, b_step)
+b_start = -2
+b_stop = 2
+b_step = 0.2
+b_list = np.arange(b_start, b_stop + b_step/2, b_step)
 
 # I plan to buffer by sweep, each sweep point has 2 outputs (one  from each pulse seq)
 buffer_len = 2 * len(b_list)
@@ -76,7 +76,7 @@ with program() as drag:
     update_frequency(qubit.name, qubit_f)
 
     with for_(n, 0, n < reps, n + 1):
-        with for_(b, b_start, b < b_stop, b + b_step):  # sweep beta
+        with for_(b, b_start, b < b_stop + b_step/2, b + b_step):  # sweep beta
             # Loop over chosen ALLXY gate sequences
             with for_each_(
                 (fg_amp, fg_angle, sg_amp, sg_angle),
@@ -125,7 +125,7 @@ ax = fig.add_subplot(1, 1, 1)
 hdisplay = display.display("", display_id=True)
 raw_data = {}
 result_handles = job.result_handles
-N = 2000  # Maximum size of data batch for each refresh
+N = 500  # Maximum size of data batch for each refresh
 remaining_data = reps
 while remaining_data != 0:
     # clear data from plot

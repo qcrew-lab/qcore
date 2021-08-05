@@ -1,4 +1,4 @@
-""" DO NOT DUPLICATE THIS FILE WHILE YOU ARE CONDUCTING THE EXPERIMENT 'COAX_TEST'
+""" DO NOT DUPLICATE THIS FILE WHILE YOU ARE CONDUCTING THE EXPERIMENT'COAX_TEST_CAVITY'
 This file is the one and only place to change parameters between measurement runs"""
 
 BASE_AMP = 0.2
@@ -67,19 +67,29 @@ qubit_IF = -50e6
 rr_LO = 8.60385e9
 rr_IF = -50e6
 
+cavity_LO = 6.6e9
+cavity_IF = -50e6
+
 rr_time_of_flight = 444  # must be integer multiple of 4 >= 180
 
 qubit_mixer_offsets = {  # NOTE: copy paste results of mixer tuning here
-    "I": 0.0,  # 0.007179423904744908,
-    "Q": 0.0,  # -0.006429361237678677,
-    "G": 0.0,  # -0.18545837402343757,
-    "P": 0.0,  # 0.09413375854492195,
+    "I": 0.0,
+    "Q": 0.0,
+    "G": 0.0,
+    "P": 0.0,
 }
 rr_mixer_offsets = {  # NOTE: copy paste results of mixer tuning here
     "I": -0.010745931230485443,
     "Q": 0.0017933552153408532,
     "G": 0.15548596382141114,
     "P": -0.12139883041381835,
+}
+
+cavity_mixer_offsets = {  # NOTE: copy paste results of mixer tuning here
+    "I": -0.001608397328527644,
+    "Q": -0.020106111897621307,
+    "G": 0.18236725628376008,
+    "P": -0.19818171858787537,
 }
 
 ########################################################################################
@@ -94,7 +104,7 @@ cw_pulse_amp = BASE_AMP  # must be float in the interval (-0.5, 0.5)
 readout_pulse_len = 1000  # must be an integer multiple of 4 >= 16
 readout_pulse_amp = BASE_AMP  # must be float in the interval (-0.5, 0.5)
 
-saturation_pulse_len = 15000  # must be an integer multiple of 4 >= 16
+saturation_pulse_len = 3000  # must be an integer multiple of 4 >= 16
 saturation_pulse_amp = BASE_AMP  # must be float in the interval (-0.5, 0.5)
 
 # NOTE use get_gaussian_waveforms() to get I and Q waveforms for Gaussian pulses
@@ -120,7 +130,7 @@ sq_pi_pi2_amp = 0.3444  # must be float in the interval (-0.5, 0.5)
 # qubit gaussian pi pulse
 gauss_pi_amp = 0.2  # * 1.9164
 gauss_pi_sigma = 107  # 175
-gauss_pi_chop = 4  # 4
+gauss_pi_chop = 4
 gauss_pi_samples = gaussian_fn(gauss_pi_amp, gauss_pi_sigma, gauss_pi_chop)
 gauss_pi_len = len(gauss_pi_samples)
 # DRAG correction
@@ -143,7 +153,7 @@ gauss_pi2_len = len(gauss_pi2_samples)
 
 qubit_ports = {"I": 1, "Q": 2}  # from OPX's point of view, these are analog outputs
 rr_ports = {"I": 4, "Q": 3, "out": 1}  # "out" is analog input from the OPX's POV
-
+cavity_ports = {"I": 5, "Q": 6}
 ########################################################################################
 ###############################           CONFIG         ###############################
 ########################################################################################
@@ -158,6 +168,8 @@ config = {
                 qubit_ports["Q"]: {"offset": qubit_mixer_offsets["Q"]},
                 rr_ports["I"]: {"offset": rr_mixer_offsets["I"]},
                 rr_ports["Q"]: {"offset": rr_mixer_offsets["Q"]},
+                cavity_ports["I"]: {"offset": rr_mixer_offsets["I"]},
+                cavity_ports["Q"]: {"offset": rr_mixer_offsets["Q"]},
             },
             "analog_inputs": {
                 rr_ports["out"]: {"offset": 0.0},
@@ -202,6 +214,20 @@ config = {
             "outputs": {"out1": ("con1", rr_ports["out"])},
             "time_of_flight": rr_time_of_flight,
             "smearing": 0,
+        },
+        "cavity": {
+            "mixInputs": {
+                "I": ("con1", cavity_ports["I"]),
+                "Q": ("con1", cavity_ports["Q"]),
+                "lo_frequency": int(cavity_LO),
+                "mixer": "mixer_cavity",
+            },
+            "intermediate_frequency": int(cavity_IF),
+            "operations": {
+                "CW": "CW",
+                "gaussian": "gaussian_pulse",
+                "saturation": "saturation_pulse",
+            },
         },
     },
     "pulses": {
@@ -345,6 +371,15 @@ config = {
                 "lo_frequency": int(rr_LO),
                 "correction": IQ_imbalance(
                     rr_mixer_offsets["G"], rr_mixer_offsets["P"]
+                ),
+            }
+        ],
+        "mixer_cavity": [
+            {
+                "intermediate_frequency": int(cavity_IF),
+                "lo_frequency": int(cavity_LO),
+                "correction": IQ_imbalance(
+                    cavity_mixer_offsets["G"], cavity_mixer_offsets["P"]
                 ),
             }
         ],

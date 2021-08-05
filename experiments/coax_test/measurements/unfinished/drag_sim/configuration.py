@@ -6,7 +6,7 @@ DRAG_COEFFICIENT = 0.5  # used for scaling the DRAG Q waveform
 
 ########################     WAVEFORM SAMPLE GENERATOR FNS     #########################
 
-BASE_AMP = 0.25
+BASE_AMP = 0.2
 
 
 def drag_wfs(ampx: float, drag: float, sigma: float, chop: int) -> tuple[np.ndarray]:
@@ -21,10 +21,13 @@ def drag_wfs(ampx: float, drag: float, sigma: float, chop: int) -> tuple[np.ndar
 QUBIT_LO_FREQ = 5e9
 QUBIT_INT_FREQ = -50e6
 
-AMPX, DRAG = 1.0, 1.0
-SIGMA, CHOP = 175, 4
+AMPX, DRAG = 1.0, 0.01
+SIGMA, CHOP = 10, 8
 DRAG1_WF_SAMPLES_I, DRAG1_WF_SAMPLES_Q = drag_wfs(AMPX, DRAG, SIGMA, CHOP)
 DRAG_PULSE_LEN = SIGMA * CHOP
+
+plt.plot(DRAG1_WF_SAMPLES_I)
+plt.plot(DRAG1_WF_SAMPLES_Q)
 
 ################################      QM CONFIG      ###################################
 

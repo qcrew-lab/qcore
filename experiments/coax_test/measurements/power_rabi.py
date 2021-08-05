@@ -1,7 +1,12 @@
 # import all objects defined in the __init__.py file in the 'imports' folder
 from qcrew.experiments.coax_test.imports import *
+from types import SimpleNamespace
 
-reload(cfg), reload(stg)  # reloads modules before executing the code below
+stage_module_path = resolve_name(".stage", "qcrew.experiments.coax_test_cavity.imports")
+if stage_module_path not in sys.modules:
+    import qcrew.experiments.coax_test_cavity.imports.stage as stg
+else:
+    reload(stg)
 
 # NOTE: make changes to lo, if, tof, mixer offsets in 'configuration.py'
 # NOTE: make changes to constant pulse amp and pulse duration in the qua script below
@@ -13,17 +18,17 @@ MEAS_NAME = "power_rabi"  # used for naming the saved data file
 ########################################################################################
 # hello
 # Loop parameters
-reps = 100
+reps = 8000
 wait_time = 12500  # in clock cycles
 
 # Qubit pulse
 qubit = stg.qubit
 a_start = -2.0
 a_stop = 2.0
-a_step = 0.4
+a_step = 0.1
 qubit_a_list = np.arange(a_start, a_stop, a_step)
 qubit_f = qubit.int_freq
-qubit_op = "pi"  # qubit operation as defined in config
+qubit_op = "test_pi"  # qubit operation as defined in config
 
 # Measurement pulse
 rr = stg.rr
@@ -84,7 +89,7 @@ ax = fig.add_subplot(1, 1, 1)
 hdisplay = display.display("", display_id=True)
 raw_data = {}
 result_handles = job.result_handles
-N = 500  # Maximum size of data batch for each refresh
+N = 100  # Maximum size of data batch for each refresh
 remaining_data = reps
 while remaining_data != 0:
     # clear data from plot

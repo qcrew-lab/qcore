@@ -1,11 +1,11 @@
 """ Power Rabi measurement script v4.1 """
 #############################           IMPORTS           ##############################
-from qcrew.experiments.coax_test.imports import *
+from qcrew.experiments.coax_test_cavity.imports import *
 from types import SimpleNamespace
 
-stage_module_path = resolve_name(".stage", "qcrew.experiments.coax_test.imports")
+stage_module_path = resolve_name(".stage", "qcrew.experiments.coax_test_cavity.imports")
 if stage_module_path not in sys.modules:
-    import qcrew.experiments.coax_test.imports.stage as stg
+    import qcrew.experiments.coax_test_cavity.imports.stage as stg
 else:
     reload(stg)
 
@@ -150,6 +150,7 @@ with DataSaver(db) as datasaver:
 
         ys = np.sqrt(update_results["Y_AVG"])  # latest batch of average signal
         xs = update_results["A"]
+        #plotter.live_plot(xs, ys, num_so_far, fit_fn=None, err=None)
         plotter.live_plot(xs, ys, num_so_far, fit_fn=mes.fit_fn, err=stats[0])
         time.sleep(1)  # prevent over-fetching, over-saving, ulta-fast live plotting
 
@@ -161,5 +162,4 @@ with DataSaver(db) as datasaver:
 
 
 ###############################          fin           #################################
-plt.show()
 print(job.execution_report())

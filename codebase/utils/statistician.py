@@ -14,7 +14,7 @@ def get_std_err(xs, ms, n, std_err=None, m=None, s=None):
     m: previous mean value
     s: previous sum of squares of differences fro mthe current mean
     """
-    if std_err is None:  
+    if std_err is None:
         old_m, old_s = xs[0], np.zeros(xs.shape[1])  # m_1 = x_1, s_1 = 0
         xs, ms = xs[1:], ms[1:]  # safe to ignore first result array
     else:

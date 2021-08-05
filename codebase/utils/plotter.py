@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from IPython import display
 from qcrew.codebase.analysis import fit
 
-
 # class Plotter:
 #     """Single axis x-y plotter. Supports line, scatter, and errorbar plot. Provides a rudimentary live plotting routine."""
 
@@ -104,6 +103,7 @@ class Plotter:
         ]
         # Join list in a single block of text
         fit_text = "\n".join(param_val_list)
+        self.fit_params = fit_text
 
         return fit_text, fit_ys
 
@@ -127,6 +127,7 @@ class Plotter:
                 self.plot_errorbar(x, y, self.ax, err, label)
             else:
                 self.plot_scatter(x, y, self.ax, label)
+
         elif plot_type == "line":
             self.plot_line(x, y, self.ax, label)
 

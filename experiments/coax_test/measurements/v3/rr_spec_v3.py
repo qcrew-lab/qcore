@@ -1,9 +1,15 @@
 """ Resonator spectroscopy measurement script v3.0 """
-
+#############################           IMPORTS           ##############################
 from qcrew.experiments.coax_test.imports import *
+from types import SimpleNamespace
+import scipy
 
-reload(cfg)  # reload configuration and stage before each measurement run
-reload(stg)
+stage_module_path = resolve_name(".stage", "qcrew.experiments.coax_test.imports")
+if stage_module_path not in sys.modules:
+    import qcrew.experiments.coax_test.imports.stage as stg
+else:
+    reload(stg)
+
 
 ##########################        TOP LEVEL CONSTANTS        ###########################
 
@@ -15,16 +21,16 @@ rr = stg.rr  # reference to the readout resonator object
 ######################        SET MEASUREMENT PARAMETERS        ########################
 
 mdata = {  # metadata dict, set measurement parameters here
-    "reps": 4000,  # number of sweep repetitions
+    "reps": 1000,  # number of sweep repetitions
     "wait_time": 50000,  # delay between reps in ns, an integer multiple of 4 >= 16
-    "f_start": -50.2e6,  # frequency sweep range is set by f_start, f_stop, and f_step
-    "f_stop": -49.6e6,
-    "f_step": 0.02e6,
+    "f_start": -10.0e6,  # frequency sweep range is set by f_start, f_stop, and f_step
+    "f_stop": 10.0e6,
+    "f_step": 0.5e6,
     "r_ampx": 0.2,  # readout pulse amplitude scale factor
     "rr_op": "readout",  # readout pulse name as defined in the config
     "fit_func_name": "lorentzian",  # name of the fit function
-    "rr_lo_freq": cfg.rr_LO,  # frequency of local oscillator driving rr
-    "rr_int_freq": cfg.rr_IF,  # frequency played by OPX to rr
+    "rr_lo_freq": rr.lo_freq,  # frequency of local oscillator driving rr
+    "rr_int_freq": rr.int_freq,  # frequency played by OPX to rr
 }
 
 freqs = np.arange(mdata["f_start"], mdata["f_stop"], mdata["f_step"])  # indep var list
@@ -167,10 +173,11 @@ plt.title(f"Resonator spectroscopy: {mdata['reps']} reps")
 plt.xlabel("Frequency (Hz)")
 plt.ylabel("Signal amplitude (A.U.)")
 plt.legend()
+plt.show()
 
 ###############################         GENERATE PATHS     #############################
 
-folderpath = Path.cwd() / f"data/{STAGE_NAME}/{str(date.today())}"
+"""folderpath = Path.cwd() / f"data/{STAGE_NAME}/{str(date.today())}"
 folderpath.mkdir(parents=True, exist_ok=True)  # create daily subfolder if none exists
 filename = f"{datetime.now().strftime('%H-%M-%S')}_{meas_name}"
 filepath = folderpath / filename
@@ -204,3 +211,4 @@ print(job.execution_report())
 elapsed_time = time.perf_counter() - start_time
 print(f"\nExecution time: {str(timedelta(seconds=elapsed_time))}")
 print("Here's the final plot :-) \n")
+"""

@@ -14,7 +14,7 @@ reps = 70000  # number of sweep repetitions
 
 # sweep parameters
 wait_time = 8000  # in clock cycles, for readout mode to relax before next repetition
-f_start, f_stop, f_step = -54e6, -46e6, 0.04e6
+f_start, f_stop, f_step = -54e6, -46e6, 0.1e6
 rr_f_list = np.arange(f_start, f_stop, f_step)
 rr_f_list_len = len(rr_f_list)
 

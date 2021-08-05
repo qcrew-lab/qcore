@@ -9,7 +9,7 @@ from qm.qua import infinite_loop_, play, program
 from scipy.optimize import minimize
 
 from qcrew.codebase.instruments import MetaInstrument, QuantumElement, Sa124
-from qcrew.experiments.coax_test.imports.stage import qubit, rr, qm, lb_qubit, lb_rr
+from qcrew.experiments.coax_test_cavity.imports.stage import qubit, rr, cavity, qm, lb_qubit, lb_rr, lb_cavity
 
 DEFAULT_NAME = "mixer_tuner"
 
@@ -330,14 +330,16 @@ if __name__ == "__main__":
     sa = Sa124(name="sa", serial_number=19184645)
     lb_qubit.frequency = qubit.lo_freq
     lb_rr.frequency = rr.lo_freq
+    lb_cavity.frequency = cavity.lo_freq
     mixer_tuner = MixerTuner(sa=sa, qm=qm)
 
     print("\n" * 30)
     print("Mixer Tuner is running, please wait for about 30s...")
     start_time = time.perf_counter()
 
-    mixer_tuner.tune(qubit)
-    mixer_tuner.tune(rr)
+    #mixer_tuner.tune(qubit)
+    #mixer_tuner.tune(rr)
+    mixer_tuner.tune(cavity)
 
     print("\n" * 3)
 
@@ -361,6 +363,13 @@ if __name__ == "__main__":
     print(f'"P": {rr.mixer.phase_offset}')
 
     print("\n" * 3)
+    print(f"Results for '{cavity.name}':")
+    print(f'"I": {cavity.mixer.i_offset},')
+    print(f'"Q": {cavity.mixer.q_offset},')
+    print(f'"G": {cavity.mixer.gain_offset},')
+    print(f'"P": {cavity.mixer.phase_offset}')
+    
+    
 
     print("Please copy paste these results in the QM config!")
     print("\n" * 20)
